@@ -273,6 +273,51 @@ def get_study_streak():
     return streak
 
 
+def get_longest_streak():
+    with db_connection(commit=False) as conn:
+        df = pd.read_sql(
+            "SELECT log_date, hours FROM daily_study_hours ORDER BY log_date ASC",
+            conn,
+        )
+    if df.empty:
+        return 0
+
+    study_dates = sorted(
+        pd.to_datetime(row["log_date"]).date()
+        for _, row in df.iterrows()
+        if float(row["hours"]) > 0
+    )
+    if not study_dates:
+        return 0
+
+    longest = 1
+    run = 1
+    for i in range(1, len(study_dates)):
+        if study_dates[i] - study_dates[i - 1] == timedelta(days=1):
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 1
+    return longest
+
+
+def get_export_dataframes():
+    with db_connection(commit=False) as conn:
+        hours = pd.read_sql(
+            "SELECT log_date, hours, notes, updated_at FROM daily_study_hours ORDER BY log_date",
+            conn,
+        )
+        tests = pd.read_sql("SELECT * FROM scheduled_tests ORDER BY test_no", conn)
+        targets = pd.read_sql(
+            """SELECT p.plan_date, t.description, t.status, t.planned_hours, t.actual_hours
+               FROM daily_target_items t
+               JOIN daily_plans p ON p.id = t.plan_id
+               ORDER BY p.plan_date, t.order_index""",
+            conn,
+        )
+    return {"study_hours": hours, "scheduled_tests": tests, "daily_targets": targets}
+
+
 def _get_or_create_plan_id(plan_date, conn):
     c = conn.cursor()
     date_str = _date_str(plan_date)

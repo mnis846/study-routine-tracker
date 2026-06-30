@@ -13,8 +13,10 @@ from database import (
     get_daily_plan,
     get_daily_plan_summary,
     get_daily_study_goal,
+    get_export_dataframes,
     get_garden_state,
     get_garden_xp,
+    get_longest_streak,
     get_next_scheduled_test,
     get_recent_study_hours,
     get_scheduled_tests,
@@ -33,6 +35,15 @@ from database import (
     update_target_status,
 )
 from garden import GARDEN_CSS, GARDEN_STAGES, XP_REWARDS, get_stage_info, render_garden_card
+from pro import (
+    FREE_GARDEN_MAX_STAGE,
+    FREE_MAX_TARGETS,
+    effective_garden_stage_index,
+    free_target_cap_reached,
+    is_pro,
+    render_pro_unlock_panel,
+    render_upgrade_cta,
+)
 from styles import MOBILE_CSS
 
 st.set_page_config(
@@ -173,6 +184,8 @@ def render_settings_panel():
         ) is not None:
             st.success("Daily goal updated!")
             st.rerun()
+    st.divider()
+    render_pro_unlock_panel()
 
 
 def render_target_item(item):
@@ -350,13 +363,23 @@ def render_target_form(plan_date, label):
             placeholder="e.g. Finish chapter 5 notes + 20 practice questions",
         )
 
+    max_targets = 99 if is_pro() else FREE_MAX_TARGETS
+    if not is_pro():
+        st.caption(f"Free plan: up to {FREE_MAX_TARGETS} targets per day.")
+
     b1, b2 = st.columns(2)
     with b1:
         if st.button("＋ Add target", key=f"add_{plan_date}", width="stretch"):
-            next_index = st.session_state[draft_count_key(plan_date)]
-            st.session_state[draft_count_key(plan_date)] = next_index + 1
-            st.session_state[draft_field_key(plan_date, next_index)] = ""
-            st.rerun()
+            if count >= max_targets:
+                st.warning(
+                    f"Free plan allows {FREE_MAX_TARGETS} targets. "
+                    "Upgrade to Pro in Settings for unlimited targets."
+                )
+            else:
+                next_index = st.session_state[draft_count_key(plan_date)]
+                st.session_state[draft_count_key(plan_date)] = next_index + 1
+                st.session_state[draft_field_key(plan_date, next_index)] = ""
+                st.rerun()
     with b2:
         if count > 1 and st.button("－ Remove last", key=f"remove_{plan_date}", width="stretch"):
             st.session_state[draft_count_key(plan_date)] = count - 1
@@ -370,6 +393,11 @@ def render_target_form(plan_date, label):
         ]
         if not targets:
             st.error("Add at least one target before saving.")
+        elif free_target_cap_reached(len(targets)):
+            st.error(
+                f"Free plan allows up to {FREE_MAX_TARGETS} targets per day. "
+                "Open Settings → Pro to unlock unlimited targets."
+            )
         elif has_duplicate_descriptions([t["description"] for t in targets]):
             st.error("Each target must have a unique description.")
         elif run_db(
@@ -421,10 +449,13 @@ period_key, period_label = period_of_day(now)
 try:
     daily_goal = get_daily_study_goal()
     streak = get_study_streak()
+    longest_streak = get_longest_streak() if is_pro() else None
     garden_state = get_garden_state(streak)
+    garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
 except DatabaseError:
     daily_goal = 6.0
     streak = 0
+    longest_streak = None
     garden_state = {"xp": 0, "stage_info": get_stage_info(0), "events": pd.DataFrame()}
 
 if "garden_session_awarded" not in st.session_state:
@@ -433,6 +464,7 @@ if "garden_session_awarded" not in st.session_state:
     session_rewards += sync_daily_garden_bonuses(today)
     show_garden_rewards(session_rewards, xp_before)
     garden_state = get_garden_state(streak)
+    garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
     st.session_state.garden_session_awarded = True
 else:
     xp_before = garden_state["xp"]
@@ -440,6 +472,7 @@ else:
     if milestone_rewards:
         show_garden_rewards(milestone_rewards, xp_before)
         garden_state = get_garden_state(streak)
+        garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
 
 st.markdown('<p class="main-header">📚 Study Tracker</p>', unsafe_allow_html=True)
 st.markdown(
@@ -452,6 +485,7 @@ st.markdown(
     f'<span class="stat-chip">🔥 {streak}d</span>'
     f'<span class="stat-chip">🎯 {daily_goal:g}h</span>'
     f'<span class="stat-chip">🌳 {garden_state["xp"]:,} XP</span>'
+    f'<span class="stat-chip">{"⭐ Pro" if is_pro() else "Free"}</span>'
     "</div>",
     unsafe_allow_html=True,
 )
@@ -618,12 +652,13 @@ with tab_hours:
     week_total = round(week_df["hours"].sum(), 1)
     goal_progress = min(today_hours / daily_goal, 1.0) if daily_goal else 0
 
-    render_metric_rows(
-        [
-            [("Today", f"{today_hours}h", f"Goal {daily_goal:g}h"), ("Goal progress", f"{round(goal_progress * 100)}%")],
-            [("This week", f"{week_total}h"), ("Daily avg", f"{round(week_total / 7, 1)}h")],
-        ]
-    )
+    hours_metrics = [
+        [("Today", f"{today_hours}h", f"Goal {daily_goal:g}h"), ("Goal progress", f"{round(goal_progress * 100)}%")],
+        [("This week", f"{week_total}h"), ("Daily avg", f"{round(week_total / 7, 1)}h")],
+    ]
+    if is_pro() and longest_streak is not None:
+        hours_metrics.append([("Longest streak", f"{longest_streak} days")])
+    render_metric_rows(hours_metrics)
     st.progress(goal_progress)
 
     st.markdown("**Log study time**")
@@ -710,6 +745,24 @@ with tab_hours:
     else:
         st.caption("No study hours logged yet. Log your first session above.")
 
+    if is_pro():
+        st.markdown("**Export data (Pro)**")
+        export_frames = get_export_dataframes()
+        for name, frame in export_frames.items():
+            if frame.empty:
+                continue
+            st.download_button(
+                label=f"Download {name}.csv",
+                data=frame.to_csv(index=False),
+                file_name=f"{name}.csv",
+                mime="text/csv",
+                key=f"export_{name}",
+                width="stretch",
+            )
+    else:
+        with st.expander("📤 Export data (Pro)", expanded=False):
+            render_upgrade_cta("export")
+
 with tab_tests:
     st.subheader("Test Series")
 
@@ -747,102 +800,110 @@ with tab_tests:
     else:
         st.info("No tests scheduled yet.")
 
-    completion_pct = (
-        round(progress["attempted"] / progress["total"] * 100)
-        if progress["total"]
-        else None
-    )
-    render_metric_rows(
-        [
-            [
-                ("Attempted", f"{progress['attempted']}/{progress['total']}"),
-                ("Avg score", f"{progress['avg_score']}" if progress["avg_score"] else "—"),
-            ],
-            [("Completion", f"{completion_pct}%" if completion_pct is not None else "—")],
-        ]
-    )
-
-    if not progress["scores"].empty:
-        chart_df = progress["scores"].copy()
-        chart_df["scheduled_date"] = pd.to_datetime(chart_df["scheduled_date"])
-        fig = px.line(
-            chart_df,
-            x="test_no",
-            y="score",
-            markers=True,
-            title="Score Trend",
-            labels={"test_no": "Test #", "score": "Score"},
-        )
-        fig.update_layout(height=240, margin=dict(l=10, r=10, t=36, b=10), font=dict(size=11))
-        st.plotly_chart(fig, width="stretch")
-
-    df = get_scheduled_tests()
-    if df.empty:
-        st.caption("Test schedule will appear here once data is seeded.")
+    if not is_pro():
+        st.divider()
+        render_upgrade_cta("tests")
+        st.caption("Pro includes full 16-test CGPSC schedule, score trends, and weak-area notes.")
     else:
-        st.markdown("**Quick update**")
-        st.caption("Best for phone — update one test at a time.")
-        render_mobile_test_editor(df)
-
-        st.markdown("**Full table**")
-        st.caption("Easier on tablet or desktop.")
-        original_df = df[["test_no", "subject", "scheduled_date", "status", "score", "remarks"]]
-        edit_df = st.data_editor(
-            original_df,
-            column_config={
-                "test_no": st.column_config.NumberColumn("Test #", disabled=True),
-                "subject": st.column_config.TextColumn("Subject", disabled=True),
-                "scheduled_date": st.column_config.DateColumn("Date", disabled=True),
-                "status": st.column_config.SelectboxColumn(
-                    "Status", options=["Not Attempted", "Attempted"]
-                ),
-                "score": st.column_config.NumberColumn("Score", min_value=0, step=1),
-                "remarks": st.column_config.TextColumn("Notes / Weak Areas"),
-            },
-            hide_index=True,
-            width="stretch",
-            key="tests_editor",
+        completion_pct = (
+            round(progress["attempted"] / progress["total"] * 100)
+            if progress["total"]
+            else None
+        )
+        render_metric_rows(
+            [
+                [
+                    ("Attempted", f"{progress['attempted']}/{progress['total']}"),
+                    ("Avg score", f"{progress['avg_score']}" if progress["avg_score"] else "—"),
+                ],
+                [("Completion", f"{completion_pct}%" if completion_pct is not None else "—")],
+            ]
         )
 
-        if st.button("Save table results", type="primary", key="save_tests", width="stretch"):
-            errors = validate_test_rows(edit_df)
-            if errors:
-                for err in errors:
-                    st.error(err)
-            else:
-                changed = 0
-                for _, row in edit_df.iterrows():
-                    if not test_row_changed(original_df, row):
-                        continue
-                    score = float(row["score"]) if pd.notna(row["score"]) else None
-                    if row["status"] == "Not Attempted":
-                        score = None
-                    if run_db(
-                        lambda r=row, s=score: update_scheduled_test(
-                            int(r["test_no"]),
-                            status=r["status"],
-                            score=s,
-                            remarks=r["remarks"] if pd.notna(r["remarks"]) else "",
-                        ),
-                        f"Could not save test #{int(row['test_no'])}",
-                    ) is None:
-                        break
-                    changed += 1
-                if changed:
-                    st.success(
-                        f"Saved {changed} test update(s)."
-                        if changed > 1
-                        else "Test results saved!"
-                    )
-                    st.rerun()
+        if not progress["scores"].empty:
+            chart_df = progress["scores"].copy()
+            chart_df["scheduled_date"] = pd.to_datetime(chart_df["scheduled_date"])
+            fig = px.line(
+                chart_df,
+                x="test_no",
+                y="score",
+                markers=True,
+                title="Score Trend",
+                labels={"test_no": "Test #", "score": "Score"},
+            )
+            fig.update_layout(height=240, margin=dict(l=10, r=10, t=36, b=10), font=dict(size=11))
+            st.plotly_chart(fig, width="stretch")
+
+        df = get_scheduled_tests()
+        if df.empty:
+            st.caption("Test schedule will appear here once data is seeded.")
+        else:
+            st.markdown("**Quick update**")
+            st.caption("Best for phone — update one test at a time.")
+            render_mobile_test_editor(df)
+
+            st.markdown("**Full table**")
+            st.caption("Easier on tablet or desktop.")
+            original_df = df[["test_no", "subject", "scheduled_date", "status", "score", "remarks"]]
+            edit_df = st.data_editor(
+                original_df,
+                column_config={
+                    "test_no": st.column_config.NumberColumn("Test #", disabled=True),
+                    "subject": st.column_config.TextColumn("Subject", disabled=True),
+                    "scheduled_date": st.column_config.DateColumn("Date", disabled=True),
+                    "status": st.column_config.SelectboxColumn(
+                        "Status", options=["Not Attempted", "Attempted"]
+                    ),
+                    "score": st.column_config.NumberColumn("Score", min_value=0, step=1),
+                    "remarks": st.column_config.TextColumn("Notes / Weak Areas"),
+                },
+                hide_index=True,
+                width="stretch",
+                key="tests_editor",
+            )
+
+            if st.button("Save table results", type="primary", key="save_tests", width="stretch"):
+                errors = validate_test_rows(edit_df)
+                if errors:
+                    for err in errors:
+                        st.error(err)
                 else:
-                    st.info("No changes to save.")
+                    changed = 0
+                    for _, row in edit_df.iterrows():
+                        if not test_row_changed(original_df, row):
+                            continue
+                        score = float(row["score"]) if pd.notna(row["score"]) else None
+                        if row["status"] == "Not Attempted":
+                            score = None
+                        if run_db(
+                            lambda r=row, s=score: update_scheduled_test(
+                                int(r["test_no"]),
+                                status=r["status"],
+                                score=s,
+                                remarks=r["remarks"] if pd.notna(r["remarks"]) else "",
+                            ),
+                            f"Could not save test #{int(row['test_no'])}",
+                        ) is None:
+                            break
+                        changed += 1
+                    if changed:
+                        st.success(
+                            f"Saved {changed} test update(s)."
+                            if changed > 1
+                            else "Test results saved!"
+                        )
+                        st.rerun()
+                    else:
+                        st.info("No changes to save.")
 
 with tab_garden:
     st.subheader("🌳 Your Study Garden")
     st.caption("Every study session feeds your tree. Come back daily to watch it grow.")
 
     st.markdown(render_garden_card(garden_state, compact=False), unsafe_allow_html=True)
+
+    if garden_state["stage_info"].get("free_capped"):
+        render_upgrade_cta("garden", compact=True)
 
     info = garden_state["stage_info"]
     next_label = "MAX 🏆" if info["is_max"] else str(info["xp_to_next"])
@@ -863,14 +924,23 @@ with tab_garden:
     st.markdown("**Evolution path**")
     badge_html = '<div class="badge-grid">'
     for i, stage in enumerate(GARDEN_STAGES):
-        earned = garden_state["xp"] >= stage["min_xp"]
-        css = "badge-earned" if earned else "badge-locked"
-        lock = "" if earned else " 🔒"
+        pro_locked = not is_pro() and i > FREE_GARDEN_MAX_STAGE
+        if pro_locked:
+            earned = False
+            css = "badge-locked"
+            lock = " 🔒 Pro"
+        else:
+            earned = garden_state["xp"] >= stage["min_xp"]
+            css = "badge-earned" if earned else "badge-locked"
+            lock = "" if earned else " 🔒"
         badge_html += (
             f'<span class="badge {css}">{stage["emoji"]} {stage["name"]}{lock}</span>'
         )
     badge_html += "</div>"
     st.markdown(badge_html, unsafe_allow_html=True)
+
+    if not is_pro():
+        render_upgrade_cta("garden")
 
     events = garden_state.get("events")
     if events is not None and not events.empty:
