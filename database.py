@@ -107,36 +107,86 @@ def init_db():
         )
 
 
-def seed_sample_tests():
+MONSOON_TEST_COUNT = 32
+
+MONSOON_TESTS = [
+    (1, "Level-1", "Sectional", "Welfare policy & Act", "2026-06-29", "Paper-7/Part-I"),
+    (2, "Level-1", "Sectional", "Organizations & sports", "2026-07-03", "Paper-7/Part-II"),
+    (3, "Level-1", "Sectional", "Education & HRD", "2026-07-09", "Paper-7/Part-III"),
+    (4, "Level-1", "FLT", "Paper-7 Complete", "2026-07-13", "Full Length Test"),
+    (5, "Level-1", "Sectional", "Philosophy", "2026-07-18", "Paper-6/Part-I"),
+    (6, "Level-1", "Sectional", "Sociology", "2026-07-21", "Paper-6/Part-II"),
+    (7, "Level-1", "Sectional", "Social Aspect of C.G.", "2026-07-25", "Paper-6/Part-III"),
+    (8, "Level-1", "FLT", "Paper-6 Complete", "2026-07-31", "Full Length Test"),
+    (9, "Level-1", "Sectional", "Indian & C.G. Economy", "2026-08-04", "Paper-5/Part-I"),
+    (10, "Level-1", "Sectional", "Indian Geography", "2026-08-07", "Paper-5/Part-II"),
+    (11, "Level-1", "Sectional", "CG Geography", "2026-08-11", "Paper-5/Part-III"),
+    (12, "Level-1", "FLT", "Paper-5 Complete", "2026-08-17", "Full Length Test"),
+    (13, "Level-1", "Sectional", "General Science", "2026-08-21", "Paper-4/Part-I"),
+    (14, "Level-1", "Sectional", "Maths & Reasoning", "2026-08-24", "Paper-4/Part-II"),
+    (15, "Level-1", "Sectional", "Applied Science", "2026-09-01", "Paper-4/Part-III"),
+    (16, "Level-1", "FLT", "Paper-4 Complete", "2026-09-06", "Full Length Test"),
+    (17, "Level-1", "Sectional", "Hindi Language", "2026-09-09", "Paper-1/Part-I"),
+    (18, "Level-1", "Sectional", "English Language", "2026-09-12", "Paper-1/Part-II"),
+    (19, "Level-1", "Sectional", "Chhattisgarhi Language", "2026-09-15", "Paper-1/Part-III"),
+    (20, "Level-1", "FLT", "Paper-1 Complete", "2026-09-21", "Full Length Test"),
+    (21, "Level-1", "Sectional", "Indian History", "2026-09-25", "Paper-3/Part-I"),
+    (22, "Level-1", "Sectional", "Constitution & Pub Admin", "2026-09-28", "Paper-3/Part-II"),
+    (23, "Level-1", "Sectional", "CG History", "2026-10-02", "Paper-3/Part-III"),
+    (24, "Level-1", "FLT", "Paper-3 Complete", "2026-10-08", "Full Length Test"),
+    (25, "Level-1", "FLT", "Paper-2 Complete", "2026-10-15", "Full Length Test"),
+    (26, "Level-2", "FLT", "Paper-01 Complete Syllabus", "2026-10-26", "FLT-08"),
+    (27, "Level-2", "FLT", "Paper-02 Complete Syllabus", "2026-10-26", "FLT-09"),
+    (28, "Level-2", "FLT", "Paper-03 Complete Syllabus", "2026-10-27", "FLT-10"),
+    (29, "Level-2", "FLT", "Paper-04 Complete Syllabus", "2026-10-27", "FLT-11"),
+    (30, "Level-2", "FLT", "Paper-05 Complete Syllabus", "2026-10-28", "FLT-12"),
+    (31, "Level-2", "FLT", "Paper-06 Complete Syllabus", "2026-10-28", "FLT-13"),
+    (32, "Level-2", "FLT", "Paper-07 Complete Syllabus", "2026-10-29", "FLT-14"),
+]
+
+
+def _insert_monsoon_tests(conn):
+    conn.cursor().executemany(
+        """INSERT INTO scheduled_tests
+           (test_no, level, test_type, subject, scheduled_date, topic_focus)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        MONSOON_TESTS,
+    )
+
+
+def _needs_monsoon_migration(conn):
+    if get_setting("monsoon_series_v1") == "1":
+        return False
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM scheduled_tests")
+    count = c.fetchone()[0]
+    if count == 0:
+        return False
+    c.execute("SELECT subject FROM scheduled_tests WHERE test_no = 1")
+    row = c.fetchone()
+    if not row:
+        return count < MONSOON_TEST_COUNT
+    return row[0] == "General Studies — History" or count < MONSOON_TEST_COUNT
+
+
+def seed_monsoon_tests():
+    """Seed Delhi IAS Monsoon Mains Test Series 2026 (32 tests)."""
     with db_connection() as conn:
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM scheduled_tests")
         if c.fetchone()[0] > 0:
+            if _needs_monsoon_migration(conn):
+                c.execute("DELETE FROM scheduled_tests")
+                _insert_monsoon_tests(conn)
+                set_setting("monsoon_series_v1", "1")
             return
-        tests = [
-            (1, "Phase 1", "Sectional", "General Studies — History", "2026-07-07", "Unit 1"),
-            (2, "Phase 1", "Sectional", "General Studies — Geography", "2026-07-14", "Unit 2"),
-            (3, "Phase 1", "Sectional", "Mathematics", "2026-07-21", "Unit 3"),
-            (4, "Phase 1", "Sectional", "English Comprehension", "2026-07-28", "Unit 4"),
-            (5, "Phase 1", "Sectional", "Logical Reasoning", "2026-08-04", "Unit 5"),
-            (6, "Phase 1", "Sectional", "Current Affairs", "2026-08-11", "Unit 6"),
-            (7, "Phase 1", "Mock", "Full Mock Test 1", "2026-08-18", "Complete syllabus"),
-            (8, "Phase 1", "Sectional", "Science & Technology", "2026-08-25", "Unit 7"),
-            (9, "Phase 1", "Sectional", "Economics", "2026-09-01", "Unit 8"),
-            (10, "Phase 1", "Sectional", "Polity & Governance", "2026-09-08", "Unit 9"),
-            (11, "Phase 1", "Mock", "Full Mock Test 2", "2026-09-15", "Complete syllabus"),
-            (12, "Phase 2", "Mock", "Full Mock Test 3", "2026-09-22", "Complete syllabus"),
-            (13, "Phase 2", "Sectional", "Data Interpretation", "2026-09-29", "Unit 10"),
-            (14, "Phase 2", "Sectional", "Essay Writing", "2026-10-06", "Unit 11"),
-            (15, "Phase 2", "Mock", "Full Mock Test 4", "2026-10-13", "Complete syllabus"),
-            (16, "Phase 2", "Mock", "Full Mock Test 5", "2026-10-20", "Complete syllabus"),
-        ]
-        c.executemany(
-            """INSERT INTO scheduled_tests
-               (test_no, level, test_type, subject, scheduled_date, topic_focus)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            tests,
-        )
+        _insert_monsoon_tests(conn)
+        set_setting("monsoon_series_v1", "1")
+
+
+def seed_sample_tests():
+    """Backward-compatible alias for Monsoon test series seeding."""
+    seed_monsoon_tests()
 
 
 def get_setting(key, default=None):
@@ -501,10 +551,12 @@ def get_test_series_progress():
     df = get_scheduled_tests()
     attempted = df[df["status"] == "Attempted"]
     scores = attempted["score"].dropna()
+    total_hours = round(float(df["hours_studied"].fillna(0).sum()), 1)
     return {
         "total": len(df),
         "attempted": len(attempted),
         "avg_score": round(scores.mean(), 1) if not scores.empty else None,
+        "total_hours": total_hours,
         "scores": attempted[["test_no", "subject", "scheduled_date", "score"]].copy(),
     }
 
