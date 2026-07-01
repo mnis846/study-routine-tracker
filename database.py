@@ -1,10 +1,11 @@
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 
-DB_PATH = "study_routine_tracker.db"
+DB_PATH = str(Path(__file__).resolve().parent / "study_routine_tracker.db")
 _UNSET = object()
 DEFAULT_DAILY_GOAL_HOURS = 6.0
 

@@ -5,7 +5,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from app_styles import APP_CSS
 from database import (
+    DB_PATH,
     DatabaseError,
     add_daily_study_hours,
     award_hours_garden_xp,
@@ -46,58 +48,35 @@ from pro import (
 )
 from styles import MOBILE_CSS
 
+APP_MOTTO = "Show up daily. Grow your knowledge."
+GREETINGS = {
+    "morning": "Good morning!",
+    "afternoon": "Good afternoon!",
+    "evening": "Good evening!",
+}
+PERIOD_NUDGES = {
+    "morning": "Start the day with clear targets — one topic, one win.",
+    "afternoon": "Afternoon check-in: stay on track before the day slips away.",
+    "evening": "Evening wrap-up — log hours and reflect on what moved the needle.",
+}
+
+
+def greeting(period_key):
+    return GREETINGS.get(period_key, "Hello!")
+
+
+def period_nudge(period_key):
+    return PERIOD_NUDGES.get(period_key, APP_MOTTO)
+
+
 st.set_page_config(
     page_title="Study Tracker",
     page_icon="📚",
-    layout="centered",
-    initial_sidebar_state="collapsed",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-st.markdown(
-    """
-<style>
-    .main-header { font-size: 2rem; font-weight: 700; color: #1E3A5F; margin-bottom: 0.25rem; }
-    .date-time { font-size: 1.1rem; color: #4A5568; margin-bottom: 0.5rem; }
-    .period-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-    }
-    .morning-badge { background: #FEF3C7; color: #92400E; }
-    .afternoon-badge { background: #DBEAFE; color: #1E40AF; }
-    .evening-badge { background: #EDE9FE; color: #5B21B6; }
-    .next-test-card {
-        background: linear-gradient(135deg, #1E3A5F 0%, #2C5282 100%);
-        color: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-    }
-    .next-test-card h3 { margin: 0 0 0.5rem 0; font-size: 1.1rem; opacity: 0.9; }
-    .next-test-card .test-title { font-size: 1.4rem; font-weight: 600; margin: 0; }
-    .next-test-card .test-date { font-size: 1rem; opacity: 0.85; margin-top: 0.25rem; }
-    .stProgress > div > div > div > div { background-color: #48BB78; }
-    .target-done { text-decoration: line-through; color: #718096; }
-    .target-skipped { color: #A0AEC0; font-style: italic; }
-    .stat-chip {
-        display: inline-block;
-        background: #EDF2F7;
-        color: #2D3748;
-        padding: 0.2rem 0.65rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-right: 0.5rem;
-    }
-</style>
-"""
-    + GARDEN_CSS
-    + MOBILE_CSS,
-    unsafe_allow_html=True,
-)
+st.markdown(GARDEN_CSS + APP_CSS + MOBILE_CSS, unsafe_allow_html=True)
 
 MORNING_END_HOUR = 12
 EVENING_START_HOUR = 17
@@ -167,15 +146,21 @@ def render_metric_rows(metric_rows):
                 col.metric(item[0], item[1])
 
 
-def render_settings_panel():
+def render_sidebar():
+    st.markdown("### 📚 Study Tracker")
+    st.caption(APP_MOTTO)
+    st.caption(f"{'⭐ Pro' if is_pro() else 'Free plan'}")
+    st.divider()
+    st.markdown("**Daily study goal**")
     if "daily_goal_input" not in st.session_state:
         st.session_state.daily_goal_input = float(daily_goal)
     new_goal = st.number_input(
-        "Daily study goal (hours)",
+        "Hours per day",
         min_value=0.5,
         max_value=16.0,
         step=0.5,
         key="daily_goal_input",
+        label_visibility="collapsed",
     )
     if st.button("Save goal", key="save_goal_main", width="stretch"):
         if run_db(
@@ -186,6 +171,10 @@ def render_settings_panel():
             st.rerun()
     st.divider()
     render_pro_unlock_panel()
+    st.divider()
+    st.markdown("**Data storage**")
+    st.caption("Saved locally — persists year-round.")
+    st.code(DB_PATH, language=None)
 
 
 def render_target_item(item):
@@ -479,26 +468,34 @@ else:
         garden_state = get_garden_state(streak)
         garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
 
-st.markdown('<p class="main-header">📚 Study Tracker</p>', unsafe_allow_html=True)
+with st.sidebar:
+    render_sidebar()
+
 st.markdown(
-    f'<p class="date-time">{now.strftime("%a, %d %b")} · {now.strftime("%I:%M %p")}</p>',
+    f"""
+    <div class="app-hero">
+        <p class="app-hero-title">📚 Study Tracker</p>
+        <p class="app-hero-greeting">{html.escape(greeting(period_key))}</p>
+        <p class="app-hero-motto">{html.escape(period_nudge(period_key))}</p>
+        <p class="app-hero-meta">
+            {now.strftime("%A, %d %B %Y")} · {now.strftime("%I:%M %p")}
+            · <span class="period-badge {PERIOD_BADGES[period_key]}">{period_label}</span>
+        </p>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
-st.markdown(
-    '<div class="chip-row">'
-    f'<span class="period-badge {PERIOD_BADGES[period_key]}">{period_label}</span>'
-    f'<span class="stat-chip">🔥 {streak}d</span>'
-    f'<span class="stat-chip">🎯 {daily_goal:g}h</span>'
-    f'<span class="stat-chip">🌳 {garden_state["xp"]:,} XP</span>'
-    f'<span class="stat-chip">{"⭐ Pro" if is_pro() else "Free"}</span>'
-    "</div>",
-    unsafe_allow_html=True,
+
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Study streak", f"{streak} days")
+m2.metric("Daily goal", f"{daily_goal:g} h")
+m3.metric("Garden XP", f"{garden_state['xp']:,}")
+m4.metric(
+    "Best streak",
+    f"{longest_streak} days" if is_pro() and longest_streak is not None else "Pro",
 )
 
 st.markdown(render_garden_card(garden_state, compact=True), unsafe_allow_html=True)
-
-with st.expander("⚙️ Settings", expanded=False):
-    render_settings_panel()
 
 tab_daily, tab_hours, tab_tests, tab_garden = st.tabs(
     ["📋 Targets", "⏱️ Hours", "📝 Monsoon", "🌳 Garden"]
@@ -529,7 +526,7 @@ with tab_daily:
             and st.session_state.morning_prompt_dismissed_date != today.isoformat()
         )
         if show_morning_prompt:
-            st.info("Good morning! You haven't set today's targets yet.")
+            st.info(f"{greeting('morning')} You haven't set today's targets yet.")
             if st.button("Yes, set today's targets", type="primary", key="morning_yes", width="stretch"):
                 st.session_state.show_target_form = True
                 st.session_state.planning_date = today
@@ -593,9 +590,11 @@ with tab_daily:
         )
         st.progress(summary["resolved_pct"] / 100)
 
-        st.markdown("**Tap to complete each target**")
-        for item in plan["items"]:
-            render_target_item(item)
+        st.markdown("**Check off each target**")
+        target_cols = st.columns(2)
+        for index, item in enumerate(plan["items"]):
+            with target_cols[index % 2]:
+                render_target_item(item)
 
         if all_targets_resolved(plan["items"]):
             st.success("All targets resolved for today!")
@@ -646,8 +645,6 @@ with tab_daily:
         st.info("No targets for today. Use the button above to set them.")
 
 with tab_hours:
-    st.subheader("Study Hours")
-
     try:
         today_hours = get_study_hours_for_date(today)
         week_df = get_week_study_hours(today)
@@ -657,116 +654,119 @@ with tab_hours:
     week_total = round(week_df["hours"].sum(), 1)
     goal_progress = min(today_hours / daily_goal, 1.0) if daily_goal else 0
 
-    hours_metrics = [
-        [("Today", f"{today_hours}h", f"Goal {daily_goal:g}h"), ("Goal progress", f"{round(goal_progress * 100)}%")],
-        [("This week", f"{week_total}h"), ("Daily avg", f"{round(week_total / 7, 1)}h")],
-    ]
-    if is_pro() and longest_streak is not None:
-        hours_metrics.append([("Longest streak", f"{longest_streak} days")])
-    render_metric_rows(hours_metrics)
-    st.progress(goal_progress)
+    hours_left, hours_right = st.columns([1, 1.8])
 
-    st.markdown("**Log study time**")
-    with st.form("study_hours_form", clear_on_submit=True):
-        log_date = st.date_input("Date", today)
-        existing = get_study_hours_for_date(log_date)
-        if existing > 0:
-            st.caption(
-                f"Already logged **{existing}h** for this date — new hours will be "
-                "added; notes will be appended if provided."
+    with hours_left:
+        st.subheader("Study Hours")
+        h1, h2, h3 = st.columns(3)
+        h1.metric("Today", f"{today_hours}h", f"Goal {daily_goal:g}h")
+        h2.metric("This week", f"{week_total}h")
+        h3.metric("Goal progress", f"{round(goal_progress * 100)}%")
+        st.progress(goal_progress)
+
+        st.markdown("**Log study time**")
+        with st.form("study_hours_form", clear_on_submit=True):
+            log_date = st.date_input("Date", today)
+            existing = get_study_hours_for_date(log_date)
+            if existing > 0:
+                st.caption(
+                    f"Already logged **{existing}h** for this date — new hours will be "
+                    "added; notes will be appended if provided."
+                )
+            hours = st.number_input(
+                "Hours studied", min_value=0.25, max_value=16.0, step=0.25, value=2.0
             )
-        hours = st.number_input(
-            "Hours studied", min_value=0.25, max_value=16.0, step=0.25, value=2.0
-        )
-        notes = st.text_input(
-            "Notes (optional)",
-            placeholder="e.g. Revision + practice questions",
-        )
-        if st.form_submit_button("Save Hours", type="primary", width="stretch"):
-            if run_db(
-                lambda: add_daily_study_hours(log_date, hours, notes),
-                "Could not log study hours",
-            ) is not None:
-                queue_garden_reward(award_hours_garden_xp(hours))
-                st.success(f"Logged {hours}h for {log_date.strftime('%d %b %Y')}!")
-                st.rerun()
+            notes = st.text_input(
+                "Notes (optional)",
+                placeholder="e.g. Revision + practice questions",
+            )
+            if st.form_submit_button("Save Hours", type="primary", width="stretch"):
+                if run_db(
+                    lambda: add_daily_study_hours(log_date, hours, notes),
+                    "Could not log study hours",
+                ) is not None:
+                    queue_garden_reward(award_hours_garden_xp(hours))
+                    st.success(f"Logged {hours}h for {log_date.strftime('%d %b %Y')}!")
+                    st.rerun()
 
-    st.markdown("**This week**")
-    chart_df = week_df.copy()
-    chart_df["label"] = chart_df.apply(
-        lambda r: f"{r['day']}\n{r['log_date'].strftime('%d %b')}",
-        axis=1,
-    )
-    chart_df["goal_met"] = chart_df["hours"] >= daily_goal
-    colors = [
-        "#48BB78" if r["is_today"] else "#38A169" if r["goal_met"] else "#4299E1"
-        for _, r in chart_df.iterrows()
-    ]
-    fig = px.bar(
-        chart_df,
-        x="label",
-        y="hours",
-        text="hours",
-        title="Hours studied per day (Mon – Sun)",
-        labels={"label": "Day", "hours": "Hours"},
-    )
-    fig.update_traces(
-        marker_color=colors, texttemplate="%{text:.1f}h", textposition="outside"
-    )
-    fig.add_hline(
-        y=daily_goal,
-        line_dash="dash",
-        line_color="#E53E3E",
-        annotation_text=f"Goal ({daily_goal:g}h)",
-    )
-    fig.update_layout(
-        height=260,
-        margin=dict(l=10, r=10, t=36, b=10),
-        showlegend=False,
-        font=dict(size=11),
-    )
-    fig.update_yaxes(range=[0, max(chart_df["hours"].max() * 1.2, daily_goal * 1.2, 4)])
-    st.plotly_chart(fig, width="stretch")
-
-    try:
-        recent = get_recent_study_hours()
-    except DatabaseError as exc:
-        st.error(f"Could not load recent study hours: {exc}")
-        recent = pd.DataFrame()
-    if not recent.empty:
-        st.markdown("**Recent log**")
-        recent = recent.copy()
-        recent["log_date"] = pd.to_datetime(recent["log_date"]).dt.strftime("%d %b %Y")
-        st.dataframe(
-            recent[["log_date", "hours", "notes"]],
-            column_config={
-                "log_date": "Date",
-                "hours": st.column_config.NumberColumn("Hours", format="%.1f h"),
-                "notes": "Notes",
-            },
-            hide_index=True,
-            width="stretch",
-        )
-    else:
-        st.caption("No study hours logged yet. Log your first session above.")
-
-    if is_pro():
-        st.markdown("**Export data (Pro)**")
-        export_frames = get_export_dataframes()
-        for name, frame in export_frames.items():
-            if frame.empty:
-                continue
-            st.download_button(
-                label=f"Download {name}.csv",
-                data=frame.to_csv(index=False),
-                file_name=f"{name}.csv",
-                mime="text/csv",
-                key=f"export_{name}",
+        try:
+            recent = get_recent_study_hours()
+        except DatabaseError as exc:
+            st.error(f"Could not load recent study hours: {exc}")
+            recent = pd.DataFrame()
+        if not recent.empty:
+            st.markdown("**Recent log**")
+            recent = recent.copy()
+            recent["log_date"] = pd.to_datetime(recent["log_date"]).dt.strftime("%d %b %Y")
+            st.dataframe(
+                recent[["log_date", "hours", "notes"]],
+                column_config={
+                    "log_date": "Date",
+                    "hours": st.column_config.NumberColumn("Hours", format="%.1f h"),
+                    "notes": "Notes",
+                },
+                hide_index=True,
                 width="stretch",
             )
-    else:
-        with st.expander("📤 Export data (Pro)", expanded=False):
-            render_upgrade_cta("export")
+        else:
+            st.caption("No study hours logged yet. Log your first session above.")
+
+        if is_pro():
+            st.markdown("**Export data (Pro)**")
+            export_frames = get_export_dataframes()
+            exp_cols = st.columns(len(export_frames) or 1)
+            for col, (name, frame) in zip(exp_cols, export_frames.items()):
+                if frame.empty:
+                    continue
+                with col:
+                    st.download_button(
+                        label=f"{name}.csv",
+                        data=frame.to_csv(index=False),
+                        file_name=f"{name}.csv",
+                        mime="text/csv",
+                        key=f"export_{name}",
+                        width="stretch",
+                    )
+        else:
+            with st.expander("📤 Export data (Pro)", expanded=False):
+                render_upgrade_cta("export")
+
+    with hours_right:
+        chart_df = week_df.copy()
+        chart_df["label"] = chart_df.apply(
+            lambda r: f"{r['day']}<br>{r['log_date'].strftime('%d %b')}",
+            axis=1,
+        )
+        chart_df["goal_met"] = chart_df["hours"] >= daily_goal
+        colors = [
+            "#48BB78" if r["is_today"] else "#38A169" if r["goal_met"] else "#4299E1"
+            for _, r in chart_df.iterrows()
+        ]
+        fig = px.bar(
+            chart_df,
+            x="label",
+            y="hours",
+            text="hours",
+            title="Weekly study hours",
+            labels={"label": "Day", "hours": "Hours"},
+        )
+        fig.update_traces(
+            marker_color=colors, texttemplate="%{text:.1f}h", textposition="outside"
+        )
+        fig.add_hline(
+            y=daily_goal,
+            line_dash="dash",
+            line_color="#E53E3E",
+            annotation_text=f"Goal ({daily_goal:g}h)",
+        )
+        fig.update_layout(
+            height=480,
+            margin=dict(l=20, r=20, t=48, b=20),
+            showlegend=False,
+            font=dict(size=13),
+        )
+        fig.update_yaxes(range=[0, max(chart_df["hours"].max() * 1.2, daily_goal * 1.2, 4)])
+        st.plotly_chart(fig, width="stretch")
 
 with tab_tests:
     st.subheader("Monsoon Test Series 2026")
@@ -819,65 +819,66 @@ with tab_tests:
             if progress["total"]
             else None
         )
-        render_metric_rows(
-            [
-                [
-                    ("Attempted", f"{progress['attempted']}/{progress['total']}"),
-                    ("Hours studied", f"{progress['total_hours']}h"),
-                ],
-                [
-                    ("Avg score", f"{progress['avg_score']}" if progress["avg_score"] else "—"),
-                    ("Completion", f"{completion_pct}%" if completion_pct is not None else "—"),
-                ],
-            ]
-        )
+        t1, t2, t3, t4, t5 = st.columns(5)
+        t1.metric("Attempted", f"{progress['attempted']}/{progress['total']}")
+        t2.metric("Hours studied", f"{progress['total_hours']}h")
+        t3.metric("Avg score", f"{progress['avg_score']}" if progress["avg_score"] else "—")
+        t4.metric("Completion", f"{completion_pct}%" if completion_pct is not None else "—")
+        t5.metric("Remaining", progress["total"] - progress["attempted"])
 
-        if not progress["scores"].empty:
-            chart_df = progress["scores"].copy()
-            chart_df["scheduled_date"] = pd.to_datetime(chart_df["scheduled_date"])
-            fig = px.line(
-                chart_df,
-                x="test_no",
-                y="score",
-                markers=True,
-                title="Score Trend",
-                labels={"test_no": "Test #", "score": "Score"},
-            )
-            fig.update_layout(height=240, margin=dict(l=10, r=10, t=36, b=10), font=dict(size=11))
-            st.plotly_chart(fig, width="stretch")
+        tests_chart_col, tests_table_col = st.columns([1, 1.4])
+
+        with tests_chart_col:
+            if not progress["scores"].empty:
+                chart_df = progress["scores"].copy()
+                chart_df["scheduled_date"] = pd.to_datetime(chart_df["scheduled_date"])
+                fig = px.line(
+                    chart_df,
+                    x="test_no",
+                    y="score",
+                    markers=True,
+                    title="Score trend",
+                    labels={"test_no": "Test #", "score": "Score"},
+                )
+                fig.update_layout(height=360, margin=dict(l=20, r=20, t=48, b=20), font=dict(size=13))
+                st.plotly_chart(fig, width="stretch")
+            else:
+                st.info("Score trend will appear after your first attempted test.")
 
         df = get_scheduled_tests()
-        if df.empty:
-            st.caption("Test schedule will appear here once data is seeded.")
-        else:
-            st.markdown("**Quick update**")
+        with tests_table_col:
+            if df.empty:
+                st.caption("Test schedule will appear here once data is seeded.")
+            else:
+                st.markdown("**Test schedule & results**")
+                original_df = df[
+                    ["test_no", "subject", "scheduled_date", "status", "hours_studied", "score", "remarks"]
+                ]
+                edit_df = st.data_editor(
+                    original_df,
+                    column_config={
+                        "test_no": st.column_config.NumberColumn("Test #", disabled=True),
+                        "subject": st.column_config.TextColumn("Subject", disabled=True),
+                        "scheduled_date": st.column_config.DateColumn("Date", disabled=True),
+                        "status": st.column_config.SelectboxColumn(
+                            "Status", options=["Not Attempted", "Attempted"]
+                        ),
+                        "hours_studied": st.column_config.NumberColumn(
+                            "Hours Studied", min_value=0, step=0.5
+                        ),
+                        "score": st.column_config.NumberColumn("Score", min_value=0, step=1),
+                        "remarks": st.column_config.TextColumn("Remarks / Weak Areas"),
+                    },
+                    hide_index=True,
+                    width="stretch",
+                    height=360,
+                    key="tests_editor",
+                )
+
+        if not df.empty:
+            st.markdown("**Quick update (mobile)**")
             st.caption("Best for phone — update one test at a time.")
             render_mobile_test_editor(df)
-
-            st.markdown("**Full table**")
-            st.caption("Easier on tablet or desktop.")
-            original_df = df[
-                ["test_no", "subject", "scheduled_date", "status", "hours_studied", "score", "remarks"]
-            ]
-            edit_df = st.data_editor(
-                original_df,
-                column_config={
-                    "test_no": st.column_config.NumberColumn("Test #", disabled=True),
-                    "subject": st.column_config.TextColumn("Subject", disabled=True),
-                    "scheduled_date": st.column_config.DateColumn("Date", disabled=True),
-                    "status": st.column_config.SelectboxColumn(
-                        "Status", options=["Not Attempted", "Attempted"]
-                    ),
-                    "hours_studied": st.column_config.NumberColumn(
-                        "Hours Studied", min_value=0, step=0.5
-                    ),
-                    "score": st.column_config.NumberColumn("Score", min_value=0, step=1),
-                    "remarks": st.column_config.TextColumn("Remarks / Weak Areas"),
-                },
-                hide_index=True,
-                width="stretch",
-                key="tests_editor",
-            )
 
             if st.button("Save table results", type="primary", key="save_tests", width="stretch"):
                 errors = validate_test_rows(edit_df)
@@ -920,69 +921,75 @@ with tab_tests:
                         st.info("No changes to save.")
 
 with tab_garden:
-    st.subheader("🌳 Your Study Garden")
-    st.caption("Every study session feeds your tree. Come back daily to watch it grow.")
+    garden_left, garden_right = st.columns([1.1, 1])
 
-    st.markdown(render_garden_card(garden_state, compact=False), unsafe_allow_html=True)
+    with garden_left:
+        st.subheader("🌳 Your Study Garden")
+        st.caption("Every study session feeds your tree. Come back daily to watch it grow.")
+        st.markdown(render_garden_card(garden_state, compact=False), unsafe_allow_html=True)
 
-    if garden_state["stage_info"].get("free_capped"):
-        render_upgrade_cta("garden", compact=True)
+        if garden_state["stage_info"].get("free_capped"):
+            render_upgrade_cta("garden", compact=True)
 
-    info = garden_state["stage_info"]
-    next_label = "MAX 🏆" if info["is_max"] else str(info["xp_to_next"])
-    render_metric_rows(
-        [
-            [("Growth XP", f"{garden_state['xp']:,}"), ("Stage", f"{info['index'] + 1}/{len(GARDEN_STAGES)}")],
-            [("Streak", f"{streak} days"), ("XP to next", next_label)],
-        ]
-    )
+        info = garden_state["stage_info"]
+        next_label = "MAX 🏆" if info["is_max"] else str(info["xp_to_next"])
+        g1, g2, g3, g4 = st.columns(4)
+        g1.metric("Growth XP", f"{garden_state['xp']:,}")
+        g2.metric("Stage", f"{info['index'] + 1}/{len(GARDEN_STAGES)}")
+        g3.metric("Streak", f"{streak} days")
+        g4.metric("XP to next", next_label)
 
-    st.markdown("**How to earn Growth XP**")
-    st.info(
-        f"🌅 Daily check-in — +{XP_REWARDS['daily_checkin']} XP (streak bonus up to +{XP_REWARDS['streak_cap']})\n\n"
-        f"⏱️ Study — +{XP_REWARDS['per_hour']} XP/hr · 🎯 Hit goal — +{XP_REWARDS['daily_goal']} XP\n\n"
-        f"✅ Complete target — +{XP_REWARDS['target_done']} XP · 🏆 All targets — +{XP_REWARDS['all_targets']} XP"
-    )
+    with garden_right:
+        st.markdown("**How to earn Growth XP**")
+        st.info(
+            f"🌅 Daily check-in — +{XP_REWARDS['daily_checkin']} XP "
+            f"(streak bonus up to +{XP_REWARDS['streak_cap']})\n\n"
+            f"⏱️ Study — +{XP_REWARDS['per_hour']} XP/hr · "
+            f"🎯 Hit goal — +{XP_REWARDS['daily_goal']} XP\n\n"
+            f"✅ Complete target — +{XP_REWARDS['target_done']} XP · "
+            f"🏆 All targets — +{XP_REWARDS['all_targets']} XP"
+        )
 
-    st.markdown("**Evolution path**")
-    badge_html = '<div class="badge-grid">'
-    for i, stage in enumerate(GARDEN_STAGES):
-        pro_locked = not is_pro() and i > FREE_GARDEN_MAX_STAGE
-        if pro_locked:
-            earned = False
-            css = "badge-locked"
-            lock = " 🔒 Pro"
+        st.markdown("**Evolution path**")
+        badge_html = '<div class="badge-grid">'
+        for i, stage in enumerate(GARDEN_STAGES):
+            pro_locked = not is_pro() and i > FREE_GARDEN_MAX_STAGE
+            if pro_locked:
+                earned = False
+                css = "badge-locked"
+                lock = " 🔒 Pro"
+            else:
+                earned = garden_state["xp"] >= stage["min_xp"]
+                css = "badge-earned" if earned else "badge-locked"
+                lock = "" if earned else " 🔒"
+            badge_html += (
+                f'<span class="badge {css}">{stage["emoji"]} {stage["name"]}{lock}</span>'
+            )
+        badge_html += "</div>"
+        st.markdown(badge_html, unsafe_allow_html=True)
+
+        if not is_pro():
+            render_upgrade_cta("garden")
+
+        events = garden_state.get("events")
+        if events is not None and not events.empty:
+            st.markdown("**Recent growth**")
+            feed = events.copy()
+            feed["event_date"] = pd.to_datetime(feed["event_date"]).dt.strftime(
+                "%d %b %H:%M"
+            )
+            feed["growth"] = feed.apply(
+                lambda r: f"+{int(r['xp_amount'])} XP — {r['message']}", axis=1
+            )
+            st.dataframe(
+                feed[["event_date", "growth"]],
+                column_config={"event_date": "When", "growth": "Event"},
+                hide_index=True,
+                width="stretch",
+                height=280,
+            )
         else:
-            earned = garden_state["xp"] >= stage["min_xp"]
-            css = "badge-earned" if earned else "badge-locked"
-            lock = "" if earned else " 🔒"
-        badge_html += (
-            f'<span class="badge {css}">{stage["emoji"]} {stage["name"]}{lock}</span>'
-        )
-    badge_html += "</div>"
-    st.markdown(badge_html, unsafe_allow_html=True)
-
-    if not is_pro():
-        render_upgrade_cta("garden")
-
-    events = garden_state.get("events")
-    if events is not None and not events.empty:
-        st.markdown("**Recent growth**")
-        feed = events.copy()
-        feed["event_date"] = pd.to_datetime(feed["event_date"]).dt.strftime(
-            "%d %b %H:%M"
-        )
-        feed["growth"] = feed.apply(
-            lambda r: f"+{int(r['xp_amount'])} XP — {r['message']}", axis=1
-        )
-        st.dataframe(
-            feed[["event_date", "growth"]],
-            column_config={"event_date": "When", "growth": "Event"},
-            hide_index=True,
-            width="stretch",
-        )
-    else:
-        st.caption(
-            "Your growth log is empty. Log study hours or complete a target to "
-            "start earning XP!"
-        )
+            st.caption(
+                "Your growth log is empty. Log study hours or complete a target to "
+                "start earning XP!"
+            )

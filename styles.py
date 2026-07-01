@@ -14,10 +14,12 @@ MOBILE_CSS = """
         font-weight: 600;
     }
 
-    /* App-like spacing */
-    .block-container {
-        padding-top: 1rem;
-        max-width: 720px;
+    /* App-like spacing on narrow screens (desktop uses app_styles.py) */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 1rem;
+            max-width: 720px;
+        }
     }
 
     /* Scrollable tabs on narrow screens */
