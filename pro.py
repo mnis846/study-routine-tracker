@@ -155,7 +155,7 @@ def render_pro_unlock_panel():
     st.markdown("**Already paid? Enter unlock code**")
     code = st.text_input(
         "Pro unlock code",
-        placeholder="e.g. CGPSC-XXXX",
+        placeholder="e.g. STUDY-XXXX",
         key="pro_unlock_code_input",
         label_visibility="collapsed",
     )

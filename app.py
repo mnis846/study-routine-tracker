@@ -498,7 +498,7 @@ m4.metric(
 st.markdown(render_garden_card(garden_state, compact=True), unsafe_allow_html=True)
 
 tab_daily, tab_hours, tab_tests, tab_garden = st.tabs(
-    ["📋 Targets", "⏱️ Hours", "📝 Monsoon", "🌳 Garden"]
+    ["📋 Targets", "⏱️ Hours", "📝 Tests", "🌳 Garden"]
 )
 
 with tab_daily:
@@ -769,8 +769,8 @@ with tab_hours:
         st.plotly_chart(fig, width="stretch")
 
 with tab_tests:
-    st.subheader("Monsoon Test Series 2026")
-    st.caption("Track all 32 tests from Delhi IAS Monsoon Mains Test Series")
+    st.subheader("Exam Test Series")
+    st.caption("Track scheduled mock tests — hours studied, scores, and weak areas.")
 
     try:
         next_test = get_next_scheduled_test()
@@ -810,7 +810,7 @@ with tab_tests:
         st.divider()
         render_upgrade_cta("tests")
         st.caption(
-            "Pro includes full 32-test Monsoon schedule, hours + score tracking, "
+            "Pro includes the full exam test schedule, hours + score tracking, "
             "trends, and weak-area notes."
         )
     else:

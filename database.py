@@ -188,7 +188,7 @@ def _needs_monsoon_migration(conn):
 
 
 def seed_monsoon_tests():
-    """Seed Delhi IAS Monsoon Mains Test Series 2026 (32 tests)."""
+    """Seed the default exam test series schedule (32 tests)."""
     with db_connection() as conn:
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM scheduled_tests")
@@ -206,7 +206,7 @@ def seed_monsoon_tests():
 
 
 def seed_sample_tests():
-    """Backward-compatible alias for Monsoon test series seeding."""
+    """Backward-compatible alias for exam test series seeding."""
     seed_monsoon_tests()
 
 
