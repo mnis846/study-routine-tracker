@@ -6,8 +6,8 @@ import plotly.express as px
 import streamlit as st
 
 from app_styles import APP_CSS
+from auth import render_auth_gate
 from database import (
-    DB_PATH,
     DatabaseError,
     add_daily_study_hours,
     award_hours_garden_xp,
@@ -61,12 +61,20 @@ PERIOD_NUDGES = {
 }
 
 
-def greeting(period_key):
-    return GREETINGS.get(period_key, "Hello!")
+def greeting(period_key, first_name=None):
+    base = GREETINGS.get(period_key, "Hello!")
+    if first_name:
+        return base.replace("!", f", {first_name}!")
+    return base
 
 
 def period_nudge(period_key):
     return PERIOD_NUDGES.get(period_key, APP_MOTTO)
+
+
+def display_first_name():
+    name = st.session_state.get("name") or st.session_state.get("username") or "Student"
+    return name.split()[0]
 
 
 st.set_page_config(
@@ -78,6 +86,16 @@ st.set_page_config(
 
 st.markdown(GARDEN_CSS + APP_CSS + MOBILE_CSS, unsafe_allow_html=True)
 
+try:
+    init_db()
+except DatabaseError as exc:
+    st.error(f"Could not initialize the database: {exc}")
+    st.stop()
+
+authenticator = render_auth_gate()
+first_name = display_first_name()
+user_id = st.session_state["user_id"]
+
 MORNING_END_HOUR = 12
 EVENING_START_HOUR = 17
 PERIOD_BADGES = {
@@ -87,16 +105,14 @@ PERIOD_BADGES = {
 }
 
 
-def ensure_db_ready():
+def ensure_user_data_ready():
+    seed_key = f"data_seeded_{user_id}"
     try:
-        if not st.session_state.get("schema_ready"):
-            init_db()
-            st.session_state.schema_ready = True
-        if not st.session_state.get("data_seeded"):
+        if not st.session_state.get(seed_key):
             seed_sample_tests()
-            st.session_state.data_seeded = True
+            st.session_state[seed_key] = True
     except DatabaseError as exc:
-        st.error(f"Could not initialize the database: {exc}")
+        st.error(f"Could not prepare your study data: {exc}")
         st.stop()
 
 
@@ -147,9 +163,10 @@ def render_metric_rows(metric_rows):
 
 
 def render_sidebar():
-    st.markdown("### 📚 Study Tracker")
-    st.caption(APP_MOTTO)
+    st.markdown(f"### Hi, {first_name}")
+    st.caption(st.session_state.get("username", ""))
     st.caption(f"{'⭐ Pro' if is_pro() else 'Free plan'}")
+    authenticator.logout(location="sidebar", key="study_logout")
     st.divider()
     st.markdown("**Daily study goal**")
     if "daily_goal_input" not in st.session_state:
@@ -171,10 +188,6 @@ def render_sidebar():
             st.rerun()
     st.divider()
     render_pro_unlock_panel()
-    st.divider()
-    st.markdown("**Data storage**")
-    st.caption("Saved locally — persists year-round.")
-    st.code(DB_PATH, language=None)
 
 
 def render_target_item(item):
@@ -433,7 +446,7 @@ def on_target_unskip(item_id):
     )
 
 
-ensure_db_ready()
+ensure_user_data_ready()
 flush_pending_garden_toasts()
 
 now = datetime.now()
@@ -452,14 +465,15 @@ except DatabaseError:
     longest_streak = None
     garden_state = {"xp": 0, "stage_info": get_stage_info(0), "events": pd.DataFrame()}
 
-if "garden_session_awarded" not in st.session_state:
+garden_award_key = f"garden_session_awarded_{user_id}"
+if garden_award_key not in st.session_state:
     xp_before = garden_state["xp"]
     session_rewards = process_daily_checkin(streak)
     session_rewards += sync_daily_garden_bonuses(today)
     show_garden_rewards(session_rewards, xp_before)
     garden_state = get_garden_state(streak)
     garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
-    st.session_state.garden_session_awarded = True
+    st.session_state[garden_award_key] = True
 else:
     xp_before = garden_state["xp"]
     milestone_rewards = sync_daily_garden_bonuses(today)
@@ -475,7 +489,7 @@ st.markdown(
     f"""
     <div class="app-hero">
         <p class="app-hero-title">📚 Study Tracker</p>
-        <p class="app-hero-greeting">{html.escape(greeting(period_key))}</p>
+        <p class="app-hero-greeting">{html.escape(greeting(period_key, first_name))}</p>
         <p class="app-hero-motto">{html.escape(period_nudge(period_key))}</p>
         <p class="app-hero-meta">
             {now.strftime("%A, %d %B %Y")} · {now.strftime("%I:%M %p")}
@@ -526,7 +540,7 @@ with tab_daily:
             and st.session_state.morning_prompt_dismissed_date != today.isoformat()
         )
         if show_morning_prompt:
-            st.info(f"{greeting('morning')} You haven't set today's targets yet.")
+            st.info(f"{greeting('morning', first_name)} You haven't set today's targets yet.")
             if st.button("Yes, set today's targets", type="primary", key="morning_yes", width="stretch"):
                 st.session_state.show_target_form = True
                 st.session_state.planning_date = today
