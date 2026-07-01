@@ -14,10 +14,27 @@ class DatabaseError(Exception):
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
+
+
+def _read_setting(conn, key, default=None):
+    c = conn.cursor()
+    c.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
+    row = c.fetchone()
+    return row[0] if row else default
+
+
+def _write_setting(conn, key, value):
+    conn.cursor().execute(
+        """INSERT INTO app_settings (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+        (key, str(value)),
+    )
 
 
 @contextmanager
@@ -155,7 +172,7 @@ def _insert_monsoon_tests(conn):
 
 
 def _needs_monsoon_migration(conn):
-    if get_setting("monsoon_series_v1") == "1":
+    if _read_setting(conn, "monsoon_series_v1") == "1":
         return False
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM scheduled_tests")
@@ -174,14 +191,17 @@ def seed_monsoon_tests():
     with db_connection() as conn:
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM scheduled_tests")
-        if c.fetchone()[0] > 0:
+        count = c.fetchone()[0]
+        if count > 0:
             if _needs_monsoon_migration(conn):
                 c.execute("DELETE FROM scheduled_tests")
                 _insert_monsoon_tests(conn)
-                set_setting("monsoon_series_v1", "1")
+                _write_setting(conn, "monsoon_series_v1", "1")
+            elif _read_setting(conn, "monsoon_series_v1") != "1":
+                _write_setting(conn, "monsoon_series_v1", "1")
             return
         _insert_monsoon_tests(conn)
-        set_setting("monsoon_series_v1", "1")
+        _write_setting(conn, "monsoon_series_v1", "1")
 
 
 def seed_sample_tests():
@@ -191,20 +211,12 @@ def seed_sample_tests():
 
 def get_setting(key, default=None):
     with db_connection(commit=False) as conn:
-        c = conn.cursor()
-        c.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
-        row = c.fetchone()
-    return row[0] if row else default
+        return _read_setting(conn, key, default)
 
 
 def set_setting(key, value):
     with db_connection() as conn:
-        c = conn.cursor()
-        c.execute(
-            """INSERT INTO app_settings (key, value) VALUES (?, ?)
-               ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
-            (key, str(value)),
-        )
+        _write_setting(conn, key, value)
 
 
 def get_daily_study_goal():
