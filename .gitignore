@@ -1,6 +1,13 @@
+.web
+*.py[cod]
+assets/external/
+.states
 venv/
 __pycache__/
 *.db
+.web/
+reflex.lock/
+.env
 .streamlit/secrets.toml
 terminals/
 mcps/
