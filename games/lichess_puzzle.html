@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:linear-gradient(160deg,#f0fdfa,#ede9fe);color:#1e293b;padding:14px}
+  .wrap{max-width:400px;margin:0 auto;text-align:center}
+  h2{font-size:15px;font-weight:600;margin-bottom:2px;color:#0f766e}
+  .meta{font-size:12px;color:#64748b;margin-bottom:10px}
+  .board{display:grid;grid-template-columns:repeat(8,1fr);width:min(100%,336px);margin:0 auto;border-radius:8px;overflow:hidden;border:2px solid #99f6e4;box-shadow:0 8px 24px rgba(13,148,136,.15)}
+  .sq{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(22px,6vw,34px);cursor:pointer;user-select:none;transition:background .15s}
+  .sq.light{background:#ecfdf5}
+  .sq.dark{background:#5eead4}
+  .sq.sel{background:#a5f3fc!important;outline:2px solid #0d9488;outline-offset:-2px}
+  .sq.last{background:#fde68a!important}
+  #msg{font-size:13px;min-height:18px;margin:10px 0;font-weight:600;color:#0d9488}
+  .themes{font-size:11px;color:#64748b;margin-bottom:8px}
+  .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  button,a.btn{padding:8px 14px;border-radius:8px;border:1px solid #99f6e4;background:#fff;color:#0f766e;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}
+  button.primary{background:#14b8a6;color:#fff;border-color:#14b8a6}
+  .err{padding:20px;color:#64748b;font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2 id="title">Daily Chess Puzzle</h2>
+  <p class="meta" id="rating"></p>
+  <div class="board" id="board"></div>
+  <p id="msg">Tap a piece, then tap destination.</p>
+  <p class="themes" id="themes"></p>
+  <div class="row">
+    <button class="primary" id="hint">Hint</button>
+    <button id="reset">Reset</button>
+    <a class="btn" id="open" href="https://lichess.org/training" target="_blank" rel="noopener">Lichess</a>
+  </div>
+</div>
+<script>
+const PIECES={'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙','k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'};
+const DATA = /*PUZZLE_DATA*/null;
+let fen, solution, step=0, selected=null, lastSq=null;
+
+function parseFen(f){
+  const parts=f.split(' ');const rows=parts[0].split('/');const grid=[];
+  for(let r=0;r<8;r++){const row=rows[r];let c=0;
+    for(const ch of row){if(ch>='1'&&ch<='8'){for(let i=0;i<+ch;i++)grid.push('.');c+=+ch;}
+    else{grid.push(ch);c++;}}}
+  return grid;
+}
+function sqName(i){const f='abcdefgh'[i%8],r=8-Math.floor(i/8);return f+r;}
+function idx(name){const f=name.charCodeAt(0)-97,r=8-+name[1];return r*8+f;}
+function render(){
+  const el=document.getElementById('board');el.innerHTML='';
+  const grid=parseFen(fen);
+  grid.forEach((p,i)=>{
+    const d=document.createElement('div');
+    const light=(Math.floor(i/8)+i%2)%2===0;
+    d.className='sq '+(light?'light':'dark');
+    if(lastSq===i)d.classList.add('last');
+    if(selected===i)d.classList.add('sel');
+    d.textContent=p==='.'?'':PIECES[p]||'';
+    d.onclick=()=>onSq(i,p);el.appendChild(d);
+  });
+}
+function applyUci(uci){
+  const grid=parseFen(fen);const from=idx(uci.slice(0,2)),to=idx(uci.slice(2,4));
+  const piece=grid[from];grid[from]='.';grid[to]=piece;
+  const newRows=[];for(let r=0;r<8;r++){let s='',e=0;
+    for(let c=0;c<8;c++){const p=grid[r*8+c];
+      if(p==='.')e++;else{if(e){s+=e;e=0;}s+=p;}}
+    if(e)s+=e;newRows.push(s);}
+  const turn=fen.split(' ')[1]==='w'?'b':'w';
+  fen=newRows.join('/')+' '+turn+' - - 0 1';
+  lastSq=to;
+}
+function onSq(i,p){
+  if(!solution)return;
+  if(selected===null){if(p&&p!=='.')selected=i;render();return;}
+  const uci=sqName(selected)+sqName(i);
+  if(uci!==solution[step]&&uci!==solution[step]?.slice(0,4)){selected=null;setMsg('Try again');render();return;}
+  applyUci(solution[step]);step++;selected=null;setMsg('Good!');
+  render();
+  if(step<solution.length){
+    setTimeout(()=>{applyUci(solution[step]);step++;render();
+      setMsg(step>=solution.length?'Solved!':'Your move');},450);
+  }else setMsg('Solved!');
+}
+function setMsg(t){document.getElementById('msg').textContent=t;}
+function init(){
+  if(!DATA){document.getElementById('board').innerHTML='<div class="err">Could not load puzzle.<br>Use the Lichess button below.</div>';
+    document.getElementById('msg').textContent='';return;}
+  fen=DATA.fen;solution=DATA.solution;step=0;
+  document.getElementById('rating').textContent='Rating '+DATA.rating+' · '+DATA.plays.toLocaleString()+' plays';
+  document.getElementById('themes').textContent=(DATA.themes||[]).join(' · ');
+  document.getElementById('open').href='https://lichess.org/training/'+DATA.id;
+  setMsg(DATA.turn==='white'?'White to move':'Black to move');
+  render();
+}
+document.getElementById('hint').onclick=()=>{if(solution&&step<solution.length)setMsg('Move: '+solution[step].slice(0,2)+' → '+solution[step].slice(2,4));};
+document.getElementById('reset').onclick=()=>{if(DATA){fen=DATA.fen;step=0;selected=null;setMsg('Your turn');render();}};
+init();
+</script>
+</body>
+</html>

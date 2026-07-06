@@ -1,0 +1,25 @@
+[project]
+name = "cgpsc-mains-tracker"
+version = "1.0.0"
+description = "Manish's CGPSC Mains Tracker — Android"
+readme = false
+requires-python = ">=3.10"
+dependencies = [
+    "flet>=0.27.0",
+    "pandas>=2.0.0,<3",
+]
+
+[tool.flet]
+app.module = "main"
+app.path = "."
+org = "com.manish.cgpsc"
+product = "CGPSC Mains Tracker"
+company = "Manish Tandan"
+copyright = "Copyright (c) 2026 Manish Tandan"
+
+[tool.flet.android]
+split_per_abi = true
+min_sdk_version = 24
+
+[tool.flet.android.manifest_application]
+usesCleartextTraffic = "false"

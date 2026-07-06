@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0f;overflow:hidden;font-family:system-ui,sans-serif}
+  canvas{display:block;width:100%;height:100%}
+  .hud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;color:#f8fafc;font-size:12px;font-weight:700;pointer-events:none}
+  .pill{background:rgba(0,0,0,.55);border:1px solid #f472b6;padding:6px 12px;border-radius:8px}
+  .hint{position:absolute;bottom:8px;width:100%;text-align:center;color:#94a3b8;font-size:12px;pointer-events:none}
+</style>
+</head>
+<body>
+<div style="position:relative;height:100vh;min-height:480px">
+  <div class="hud"><span class="pill" id="dist">0 m</span><span class="pill">🏎️ NEON RACER</span><span class="pill" id="spd">0 km/h</span></div>
+  <canvas id="c" tabindex="0"></canvas>
+  <div class="hint">← → or A D · swipe · dodge traffic</div>
+</div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+let W,H,laneW,player,obstacles=[],roadZ=0,speed=2.5,dist=0,keys={},touchDir=0,alive=true,spawnCd=0;
+function resize(){const r=c.parentElement.getBoundingClientRect();W=c.width=r.width;H=c.height=Math.max(480,r.height);
+  laneW=W/3;player={lane:1,y:H-110,w:46,h:78};}
+resize();onresize=resize;
+function reset(){obstacles=[];speed=2.5;dist=0;alive=true;player.lane=1;spawnCd=0;}
+c.onkeydown=e=>keys[e.code]=true;c.onkeyup=e=>keys[e.code]=false;
+c.onclick=()=>c.focus();
+c.ontouchstart=e=>{const t=e.touches[0],r=c.getBoundingClientRect(),mx=(t.clientX-r.left)/r.width;
+  touchDir=mx<.33?-1:mx>.66?1:0;c.focus();};
+c.ontouchend=()=>touchDir=0;
+function spawnObs(){const lane=Math.random()*3|0;obstacles.push({lane,y:-120,w:40,h:70,
+  color:['#ef4444','#eab308','#8b5cf6','#22c55e'][Math.random()*4|0],speed:1.2+Math.random()*1.5});}
+function laneX(l){return laneW*l+laneW/2;}
+function step(){
+  if(!alive)return;
+  let dir=0;if(keys.ArrowLeft||keys.KeyA)dir=-1;if(keys.ArrowRight||keys.KeyD)dir=1;dir=dir||touchDir;
+  player.lane=Math.max(0,Math.min(2,player.lane+dir*.07));
+  speed=Math.min(5.5,speed+.0004);dist+=speed*.35;
+  roadZ=(roadZ+speed*5)%80;
+  spawnCd++;if(spawnCd>90&&Math.random()<.012){spawnObs();spawnCd=0;}
+  obstacles.forEach(o=>o.y+=speed*.85+o.speed);
+  obstacles=obstacles.filter(o=>o.y<H+80);
+  const px=laneX(player.lane);
+  obstacles.forEach(o=>{if(Math.abs(o.lane-player.lane)<.55&&Math.abs(o.y-player.y)<70)alive=false;});
+  document.getElementById('dist').textContent=Math.floor(dist)+' m';
+  document.getElementById('spd').textContent=Math.floor(speed*18)+' km/h';
+}
+function drawCar(px,py,col,enemy){
+  x.save();x.translate(px,py);
+  x.fillStyle=col;x.shadowColor=col;x.shadowBlur=enemy?0:16;
+  x.beginPath();x.roundRect(-player.w/2,-player.h/2,player.w,player.h,10);x.fill();
+  x.fillStyle='#1e293b';x.fillRect(-player.w/2+6,-player.h/2+10,player.w-12,player.h/3);
+  if(!enemy){x.fillStyle='#fde047';x.fillRect(-8,-player.h/2+4,16,8);x.fillRect(-8,player.h/2-12,16,8);}
+  x.restore();
+}
+function draw(){
+  x.fillStyle='#111827';x.fillRect(0,0,W,H);
+  for(let i=0;i<3;i++){const lx=laneW*i;x.strokeStyle='#374151';x.lineWidth=2;x.setLineDash([18,18]);
+    x.lineDashOffset=-roadZ;x.beginPath();x.moveTo(lx,0);x.lineTo(lx,H);x.stroke();}
+  x.setLineDash([]);
+  x.fillStyle='#1f2937';x.fillRect(0,H*.55,W,H*.45);
+  obstacles.forEach(o=>drawCar(laneX(o.lane),o.y,o.color,true));
+  drawCar(laneX(player.lane),player.y,'#06b6d4',false);
+  if(!alive){x.fillStyle='rgba(0,0,0,.6)';x.fillRect(0,0,W,H);
+    x.fillStyle='#fff';x.font='bold 20px system-ui';x.textAlign='center';
+    x.fillText('Crashed! Click to restart',W/2,H/2);c.onclick=()=>{reset();c.onclick=()=>c.focus();};}
+}
+function loop(){step();draw();requestAnimationFrame(loop);}
+loop();
+</script>
+</body>
+</html>

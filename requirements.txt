@@ -1,6 +1,10 @@
 streamlit>=1.35.0,<2
 pandas>=2.0.0,<3
 plotly>=5.18.0,<6
+python-chess>=1.999,<2
 streamlit-authenticator>=0.4.0,<0.5
 PyYAML>=6.0
 bcrypt>=4.0
+pystray>=0.19.0,<1
+Pillow>=10.0.0,<12
+plyer>=2.1.0,<3

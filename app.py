@@ -36,7 +36,23 @@ from database import (
     update_scheduled_test,
     update_target_status,
 )
-from garden import GARDEN_CSS, GARDEN_STAGES, XP_REWARDS, get_stage_info, render_garden_card
+from garden import (
+    GARDEN_CSS,
+    GARDEN_STAGES,
+    XP_REWARDS,
+    get_stage_info,
+    render_garden_card,
+    render_interactive_garden,
+)
+from logbook import (
+    add_activity_log,
+    delete_activity_log,
+    get_activity_log_stats,
+    get_activity_logs,
+)
+from showup_grid import load_showup_hours, render_github_heatmap
+from break_games_config import GAME_GROUPS
+import relax_games
 from pro import (
     FREE_GARDEN_MAX_STAGE,
     FREE_MAX_TARGETS,
@@ -47,6 +63,24 @@ from pro import (
     render_upgrade_cta,
 )
 from styles import MOBILE_CSS
+
+MAX_TARGETS_PER_DAY = 99
+LOG_SUBJECTS = [
+    "",
+    "Language / Communication",
+    "Essay / Writing",
+    "General Studies I",
+    "General Studies II",
+    "General Studies III",
+    "General Studies IV",
+    "Optional / Specialization",
+    "General / Mixed",
+]
+MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
+CURRENT_YEAR = date.today().year
 
 APP_MOTTO = "Show up daily. Grow your knowledge."
 GREETINGS = {
@@ -509,10 +543,23 @@ m4.metric(
     f"{longest_streak} days" if is_pro() and longest_streak is not None else "Pro",
 )
 
-st.markdown(render_garden_card(garden_state, compact=True), unsafe_allow_html=True)
+heatmap_start = today - timedelta(days=400)
+try:
+    showup_hours = load_showup_hours(heatmap_start, today)
+except DatabaseError:
+    showup_hours = {}
+st.markdown(
+    render_github_heatmap(
+        showup_hours,
+        streak=streak,
+        daily_goal=daily_goal,
+        display_name=first_name,
+    ),
+    unsafe_allow_html=True,
+)
 
-tab_daily, tab_hours, tab_tests, tab_garden = st.tabs(
-    ["📋 Targets", "⏱️ Hours", "📝 Tests", "🌳 Garden"]
+tab_daily, tab_hours, tab_logbook, tab_tests, tab_garden, tab_break = st.tabs(
+    ["📋 Targets", "⏱️ Hours", "📓 Logbook", "📝 Tests", "🌳 Garden", "☕ Break"]
 )
 
 with tab_daily:
@@ -782,6 +829,170 @@ with tab_hours:
         fig.update_yaxes(range=[0, max(chart_df["hours"].max() * 1.2, daily_goal * 1.2, 4)])
         st.plotly_chart(fig, width="stretch")
 
+with tab_logbook:
+    st.markdown(
+        '<p class="section-label">Logbook</p>'
+        '<p class="section-title">What did you study?</p>',
+        unsafe_allow_html=True,
+    )
+    st.caption("One line is enough — saved to your account, kept forever.")
+
+    try:
+        year_stats = get_activity_log_stats(CURRENT_YEAR)
+        recent_entries = get_activity_logs(year=CURRENT_YEAR, limit=20)
+    except DatabaseError as exc:
+        st.error(f"Could not load logbook: {exc}")
+        st.stop()
+
+    s1, s2 = st.columns(2)
+    s1.metric(f"Days logged ({CURRENT_YEAR})", year_stats["days_logged"])
+    s2.metric(f"Entries ({CURRENT_YEAR})", year_stats["total_entries"])
+
+    paper_options = [s for s in LOG_SUBJECTS if s]
+    if "logbook_paper" not in st.session_state:
+        st.session_state.logbook_paper = paper_options[0] if paper_options else ""
+
+    st.markdown("**Subject**")
+    paper_cols = st.columns(min(len(paper_options), 4) or 1)
+    for idx, paper in enumerate(paper_options):
+        with paper_cols[idx % len(paper_cols)]:
+            short = paper.split(" /")[0][:12] if paper else "Any"
+            if st.button(
+                short,
+                key=f"log_paper_{idx}",
+                width="stretch",
+                type="primary" if st.session_state.logbook_paper == paper else "secondary",
+            ):
+                st.session_state.logbook_paper = paper
+                st.rerun()
+
+    log_cols = st.columns([4, 1])
+    with log_cols[0]:
+        quick_log = st.text_input(
+            "Today's study",
+            placeholder="e.g. Read chapter 3 + 10 practice questions",
+            key="quick_log_text",
+            label_visibility="collapsed",
+        )
+    with log_cols[1]:
+        save_log = st.button("Log it", type="primary", width="stretch", key="quick_log_save")
+
+    if save_log:
+        if not quick_log.strip():
+            st.error("Write what you studied.")
+        elif run_db(
+            lambda: add_activity_log(
+                today,
+                quick_log,
+                st.session_state.logbook_paper,
+                None,
+            ),
+            "Could not save log entry",
+        ) is not None:
+            st.session_state.pop("quick_log_text", None)
+            st.toast("Logged!", icon="📓")
+            st.rerun()
+
+    st.markdown("**Recent**")
+    if recent_entries.empty:
+        st.info(f"No entries yet — log what you studied today, {first_name}.")
+    else:
+        for _, row in recent_entries.iterrows():
+            entry_id = int(row["id"])
+            entry_date = pd.to_datetime(row["log_date"]).strftime("%d %b")
+            subject_label = row["subject"] or "General"
+            safe_activity = html.escape(str(row["activity"]))
+            safe_subject = html.escape(str(subject_label))
+            del_col, body_col = st.columns([0.12, 0.88])
+            with del_col:
+                if st.button("✕", key=f"del_log_{entry_id}", help="Delete"):
+                    if run_db(
+                        lambda eid=entry_id: delete_activity_log(eid),
+                        "Could not delete entry",
+                    ) is not None:
+                        st.rerun()
+            with body_col:
+                st.markdown(
+                    f'<div class="log-entry">'
+                    f'<div class="log-entry-meta">{entry_date} · {safe_subject}</div>'
+                    f'<div class="log-entry-body">{safe_activity}</div>'
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+    with st.expander("More options — date, duration, export, browse"):
+        with st.form("activity_log_advanced", clear_on_submit=True):
+            adv_date = st.date_input("Date", today, key="logbook_entry_date")
+            adv_subject = st.selectbox(
+                "Subject",
+                LOG_SUBJECTS,
+                format_func=lambda s: "— Any —" if not s else s,
+                key="logbook_entry_subject",
+            )
+            adv_activity = st.text_area("Details", key="logbook_entry_activity", height=80)
+            adv_duration = st.number_input(
+                "Hours (optional)", min_value=0.0, max_value=16.0, step=0.25, value=0.0,
+                key="logbook_entry_duration",
+            )
+            if st.form_submit_button("Save detailed entry", width="stretch"):
+                if not adv_activity.strip():
+                    st.error("Write what you studied.")
+                elif run_db(
+                    lambda: add_activity_log(
+                        adv_date,
+                        adv_activity,
+                        adv_subject,
+                        adv_duration if adv_duration > 0 else None,
+                    ),
+                    "Could not save log entry",
+                ) is not None:
+                    st.rerun()
+
+        if is_pro():
+            export_frames = get_export_dataframes()
+            activity_export = export_frames.get("activity_logs")
+            if activity_export is not None and not activity_export.empty:
+                st.download_button(
+                    label="Download activity_logs.csv",
+                    data=activity_export.to_csv(index=False),
+                    file_name=f"activity_logs_{CURRENT_YEAR}.csv",
+                    mime="text/csv",
+                    key="export_logbook_activity_logs",
+                    width="stretch",
+                )
+        else:
+            st.caption("Activity log export is included with Pro.")
+
+        browse_mode = st.radio(
+            "Browse by", ["Month", "Full year"], horizontal=True, key="logbook_browse_mode"
+        )
+        if browse_mode == "Month":
+            year_col, month_col = st.columns(2)
+            view_year = year_col.number_input(
+                "Year", min_value=2020, max_value=2035, value=CURRENT_YEAR, key="logbook_year"
+            )
+            view_month = month_col.selectbox(
+                "Month",
+                list(range(1, 13)),
+                format_func=lambda m: MONTH_NAMES[m - 1],
+                index=today.month - 1,
+                key="logbook_month",
+            )
+            entries = get_activity_logs(year=view_year, month=view_month, limit=500)
+            st.caption(f"{MONTH_NAMES[view_month - 1]} {view_year} — {len(entries)} entries")
+        else:
+            view_year = st.number_input(
+                "Year", min_value=2020, max_value=2035, value=CURRENT_YEAR, key="logbook_full_year"
+            )
+            entries = get_activity_logs(year=view_year, limit=2000)
+            st.caption(f"All of {view_year} — {len(entries)} entries")
+        if not entries.empty:
+            st.dataframe(
+                entries[["log_date", "subject", "activity"]],
+                hide_index=True,
+                width="stretch",
+            )
+
 with tab_tests:
     st.subheader("Exam Test Series")
     st.caption("Track scheduled mock tests — hours studied, scores, and weak areas.")
@@ -935,23 +1146,30 @@ with tab_tests:
                         st.info("No changes to save.")
 
 with tab_garden:
+    st.markdown(
+        '<p class="section-label">Study Garden</p>'
+        '<p class="section-title">Grow your tree as you study</p>',
+        unsafe_allow_html=True,
+    )
+    st.caption("Water the tree, collect sunlight orbs, and earn XP from real study actions.")
+
+    render_interactive_garden(garden_state, height=440, first_name=first_name)
+
+    info = garden_state["stage_info"]
+    next_label = "MAX 🏆" if info["is_max"] else str(info["xp_to_next"])
+    g1, g2, g3, g4 = st.columns(4)
+    g1.metric("Growth XP", f"{garden_state['xp']:,}")
+    g2.metric("Stage", f"{info['index'] + 1}/{len(GARDEN_STAGES)}")
+    g3.metric("Streak", f"{streak} days")
+    g4.metric("XP to next", next_label)
+
     garden_left, garden_right = st.columns([1.1, 1])
 
     with garden_left:
-        st.subheader("🌳 Your Study Garden")
-        st.caption("Every study session feeds your tree. Come back daily to watch it grow.")
-        st.markdown(render_garden_card(garden_state, compact=False), unsafe_allow_html=True)
+        st.markdown(render_garden_card(garden_state, compact=True), unsafe_allow_html=True)
 
         if garden_state["stage_info"].get("free_capped"):
             render_upgrade_cta("garden", compact=True)
-
-        info = garden_state["stage_info"]
-        next_label = "MAX 🏆" if info["is_max"] else str(info["xp_to_next"])
-        g1, g2, g3, g4 = st.columns(4)
-        g1.metric("Growth XP", f"{garden_state['xp']:,}")
-        g2.metric("Stage", f"{info['index'] + 1}/{len(GARDEN_STAGES)}")
-        g3.metric("Streak", f"{streak} days")
-        g4.metric("XP to next", next_label)
 
     with garden_right:
         st.markdown("**How to earn Growth XP**")
@@ -1007,3 +1225,35 @@ with tab_garden:
                 "Your growth log is empty. Log study hours or complete a target to "
                 "start earning XP!"
             )
+
+with tab_break:
+    st.markdown(
+        '<p class="section-label">Break</p>'
+        '<p class="section-title">Five minutes, then back to study</p>',
+        unsafe_allow_html=True,
+    )
+
+    category = st.segmented_control(
+        "Category",
+        options=list(GAME_GROUPS.keys()),
+        default="Pop",
+        key="break_category",
+    )
+    games_in_cat = GAME_GROUPS[category]
+    if st.session_state.get("break_game_pick") not in games_in_cat:
+        st.session_state.break_game_pick = games_in_cat[0]
+
+    game_pick = st.segmented_control(
+        "Game",
+        options=games_in_cat,
+        key="break_game_pick",
+    )
+
+    if game_pick == "Chess Puzzles":
+        st.link_button(
+            "Full Lichess site",
+            "https://lichess.org/training",
+            width="content",
+        )
+
+    relax_games.render_break_game(game_pick)

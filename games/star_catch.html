@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#020617;overflow:hidden;font-family:system-ui,sans-serif}
+  canvas{display:block;width:100%;height:100%;cursor:grab}
+  .hud{position:absolute;top:10px;left:12px;right:12px;display:flex;justify-content:space-between;color:#e2e8f0;font-size:13px;font-weight:600;pointer-events:none}
+  .pill{background:rgba(15,23,42,.7);padding:6px 14px;border-radius:999px;border:1px solid #334155}
+</style>
+</head>
+<body>
+<div style="position:relative;height:100vh;min-height:480px">
+  <div class="hud"><span class="pill" id="s">Caught: 0</span><span class="pill">✨ Star Catch — drag or click</span><span class="pill" id="streak">Streak 0</span></div>
+  <canvas id="c"></canvas>
+</div>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');let W,H,stars=[],bursts=[],score=0,streak=0,miss=0;
+function resize(){const r=c.parentElement.getBoundingClientRect();W=c.width=r.width;H=c.height=Math.max(480,r.height)}
+resize();onresize=resize;
+function addStar(){if(stars.length>18)return;stars.push({x:Math.random()*W,y:Math.random()*H,
+  r:8+Math.random()*14,phase:Math.random()*6.28,sp:.02+Math.random()*.03,hue:40+Math.random()*40});}
+for(let i=0;i<10;i++)addStar();
+function catchStar(s){
+  score++;streak++;miss=0;document.getElementById('s').textContent='Caught: '+score;
+  document.getElementById('streak').textContent='Streak '+streak;
+  for(let i=0;i<12;i++)bursts.push({x:s.x,y:s.y,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,life:30});
+  stars=stars.filter(o=>o!==s);addStar();
+}
+function hit(mx,my){
+  for(let i=stars.length-1;i>=0;i--){const s=stars[i],dx=mx-s.x,dy=my-s.y;
+    if(dx*dx+dy*dy<(s.r+14)*(s.r+14)){catchStar(s);return true;}}
+  streak=0;miss++;document.getElementById('streak').textContent='Streak 0';return false;
+}
+c.onmousedown=e=>{const r=c.getBoundingClientRect();hit((e.clientX-r.left)*(W/r.width),(e.clientY-r.top)*(H/r.height));};
+c.ontouchstart=e=>{e.preventDefault();const t=e.touches[0],r=c.getBoundingClientRect();
+  hit((t.clientX-r.left)*(W/r.width),(t.clientY-r.top)*(H/r.height));};
+function draw(){
+  x.fillStyle='#020617';x.fillRect(0,0,W,H);
+  for(let i=0;i<40;i++){x.fillStyle='rgba(255,255,255,'+(.15+Math.random()*.25)+')';
+    x.fillRect(Math.random()*W,Math.random()*H,1.5,1.5);}
+  if(Math.random()<.05)addStar();
+  stars.forEach(s=>{
+    s.phase+=s.sp;const glow=.6+.4*Math.sin(s.phase);
+    x.beginPath();x.arc(s.x,s.y,s.r*glow,0,6.28);
+    const g=x.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*2);
+    g.addColorStop(0,'hsla('+s.hue+',90%,70%,.95)');g.addColorStop(1,'transparent');
+    x.fillStyle=g;x.fill();
+    x.font='bold '+Math.round(s.r)+'px serif';x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';
+    x.fillText('✦',s.x,s.y);
+  });
+  bursts.forEach(b=>{b.x+=b.vx;b.y+=b.vy;b.life--;x.globalAlpha=b.life/30;x.fillStyle='#fde68a';
+    x.beginPath();x.arc(b.x,b.y,3,0,6.28);x.fill();x.globalAlpha=1;});
+  bursts=bursts.filter(b=>b.life>0);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  buildozer:
+    image: kivy/buildozer:latest
+    working_dir: /app/android
+    volumes:
+      - ..:/app
+      - buildozer-cache:/root/.buildozer
+      - p4a-cache:/root/.local/share/python-for-android
+    command: buildozer android debug
+
+volumes:
+  buildozer-cache:
+  p4a-cache:

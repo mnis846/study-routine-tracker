@@ -1,5 +1,11 @@
 """Study Garden — visual growth system and SVG renderer."""
 
+import json
+
+import streamlit.components.v1 as components
+
+from profile import EXAM, FIRST_NAME
+
 GARDEN_STAGES = [
     {"name": "Dormant Seed", "min_xp": 0, "emoji": "🌰", "sky": "#E8F4FC", "ground": "#8B6914"},
     {"name": "Tiny Sprout", "min_xp": 40, "emoji": "🌱", "sky": "#E0F2FE", "ground": "#7C5E12"},
@@ -186,7 +192,7 @@ def render_garden_card(garden_state, compact=False):
     pct = int(info["progress"] * 100)
 
     if info["is_max"]:
-        next_line = "Maximum stage reached — you're a legend! 🏆"
+        next_line = f"Maximum stage reached — {FIRST_NAME}, you're a legend! 🏆"
     else:
         next_line = f"{info['xp_to_next']} XP to <b>{info['next']['name']}</b> {info['next']['emoji']}"
 
@@ -213,7 +219,7 @@ def render_garden_card(garden_state, compact=False):
         <div class="garden-xp-total">{xp:,} Growth XP</div>
         <div class="garden-bar"><div class="garden-bar-fill" style="width:{pct}%;background:{bar_color}"></div></div>
         <div class="garden-next">{next_line}</div>
-        <div class="garden-hint">🧠 Your tree grows when you study, complete targets & check in daily.</div>
+        <div class="garden-hint">🧠 {FIRST_NAME}, your tree grows as you prep for {EXAM} — study, complete targets & check in daily.</div>
       </div>
     </div>
     """
@@ -223,25 +229,19 @@ GARDEN_CSS = """
 <style>
     .garden-compact {
         display: flex; align-items: center; gap: 1rem;
-        background: linear-gradient(135deg, #F0FFF4 0%, #EBF8FF 100%);
-        border: 1px solid #C6F6D5; border-radius: 16px;
+        background: linear-gradient(135deg, #ecfdf5, #ede9fe);
+        border: 1px solid #99f6e4; border-radius: 12px;
         padding: 0.75rem 1.25rem; margin-bottom: 1rem;
-        animation: gardenPulse 3s ease-in-out infinite;
-    }
-    @keyframes gardenPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(72,187,120,0); }
-        50% { box-shadow: 0 0 20px 2px rgba(72,187,120,0.25); }
     }
     .garden-compact-tree { width: 90px; flex-shrink: 0; }
     .garden-compact-info { flex: 1; }
     .garden-hero {
-        display: flex; align-items: center; gap: 2rem;
-        background: linear-gradient(135deg, #F0FFF4 0%, #E9D8FD 50%, #EBF8FF 100%);
-        border: 2px solid #9AE6B4; border-radius: 20px;
+        display: flex; align-items: center; gap: 2.5rem;
+        background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 50%, #ede9fe 100%);
+        border: 1px solid #99f6e4; border-radius: 14px;
         padding: 1.5rem 2rem; margin-bottom: 1rem;
-        animation: gardenPulse 3s ease-in-out infinite;
     }
-    .garden-visual { width: 200px; flex-shrink: 0; }
+    .garden-visual { width: 240px; flex-shrink: 0; }
     .garden-details { flex: 1; }
     .garden-stage-title { font-size: 1.5rem; font-weight: 700; color: #22543D; margin-bottom: 0.25rem; }
     .garden-xp, .garden-xp-total { font-size: 1rem; color: #2F855A; font-weight: 600; margin-bottom: 0.5rem; }
@@ -255,7 +255,213 @@ GARDEN_CSS = """
         display: inline-block; padding: 0.35rem 0.75rem; border-radius: 999px;
         font-size: 0.8rem; font-weight: 600;
     }
-    .badge-earned { background: #C6F6D5; color: #22543D; }
-    .badge-locked { background: #EDF2F7; color: #A0AEC0; }
+    .badge-earned { background: #ccfbf1; color: #0f766e; }
+    .badge-locked { background: #f1f5f9; color: #94a3b8; }
+    .garden-game-shell {
+        border-radius: 20px; overflow: hidden;
+        border: 2px solid #9AE6B4;
+        box-shadow: 0 12px 40px rgba(34, 84, 61, 0.12);
+        margin-bottom: 1rem;
+    }
 </style>
 """
+
+
+def render_interactive_garden(garden_state, height=420, first_name=None):
+    """Embed a playable garden scene — water, collect sunlight, watch the tree."""
+    info = garden_state["stage_info"]
+    stage = info["current"]
+    display_name = first_name or FIRST_NAME
+    payload = json.dumps({
+        "stageIdx": info["index"],
+        "stageName": stage["name"],
+        "emoji": stage["emoji"],
+        "xp": garden_state["xp"],
+        "progress": int(info["progress"] * 100),
+        "sky": stage["sky"],
+        "ground": stage["ground"],
+        "firstName": display_name,
+    })
+    html = f"""
+    <div class="garden-game-shell">
+    <canvas id="garden" style="width:100%;display:block;background:#0f172a;"></canvas>
+    </div>
+    <script>
+    const DATA = {payload};
+    const canvas = document.getElementById('garden');
+    const ctx = canvas.getContext('2d');
+    let W, H, orbs = [], drops = [], particles = [], waterCooldown = 0;
+    let sunlight = 0, watered = 0;
+
+    const treeSizes = [0.35,0.42,0.5,0.58,0.68,0.78,0.88,0.95,1.05,1.15];
+
+    function resize() {{
+      const r = canvas.parentElement.getBoundingClientRect();
+      W = canvas.width = r.width;
+      H = canvas.height = Math.max(380, r.width * 0.52);
+    }}
+    window.addEventListener('resize', resize);
+    resize();
+
+    function spawnOrb() {{
+      if (orbs.length > 6) return;
+      orbs.push({{
+        x: 40 + Math.random() * (W - 80), y: -20,
+        r: 10 + Math.random() * 8, vy: 0.5 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2
+      }});
+    }}
+
+    function drawSky() {{
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, DATA.sky);
+      g.addColorStop(1, '#f8fafc');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(251,191,36,0.85)';
+      ctx.beginPath(); ctx.arc(W - 56, 52, 28, 0, Math.PI * 2); ctx.fill();
+    }}
+
+    function drawGround() {{
+      ctx.fillStyle = DATA.ground;
+      ctx.beginPath();
+      ctx.ellipse(W/2, H - 28, W * 0.42, 36, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }}
+
+    function drawTree() {{
+      const scale = treeSizes[Math.min(DATA.stageIdx, 9)] || 1;
+      const cx = W / 2, base = H - 42;
+      ctx.save();
+      ctx.translate(cx, base);
+      ctx.scale(scale, scale);
+      const sway = Math.sin(Date.now() / 900) * 0.04;
+      ctx.rotate(sway);
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(-12, -30, 24, 90);
+      const greens = ['#2e7d32','#388e3c','#43a047','#66bb6a'];
+      const layers = 3 + Math.min(DATA.stageIdx, 4);
+      for (let i = 0; i < layers; i++) {{
+        ctx.fillStyle = greens[i % greens.length];
+        ctx.beginPath();
+        ctx.ellipse(0, -50 - i * 28, 52 - i * 4, 34 - i * 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }}
+      if (DATA.stageIdx >= 6) {{
+        ctx.fillStyle = '#f48fb1';
+        [[-30,-70],[10,-85],[35,-60]].forEach(([x,y]) => {{
+          ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+        }});
+      }}
+      if (DATA.stageIdx >= 7) {{
+        ctx.fillStyle = '#e53935';
+        [[-20,-55],[15,-75],[40,-50]].forEach(([x,y]) => {{
+          ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill();
+        }});
+      }}
+      ctx.restore();
+      ctx.fillStyle = '#1e3a5f';
+      ctx.font = '600 15px Segoe UI, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(DATA.emoji + ' ' + DATA.stageName, cx, H - 8);
+    }}
+
+    function drawHUD() {{
+      ctx.fillStyle = 'rgba(15,23,42,0.55)';
+      ctx.fillRect(12, 12, W - 24, 52);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '600 13px Segoe UI, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(DATA.firstName + "'s tree · " + DATA.xp.toLocaleString() + ' XP', 24, 34);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px Segoe UI, system-ui, sans-serif';
+      ctx.fillText('☀️ ' + sunlight + ' collected · 💧 watered ' + watered + '× · Click orbs & water button', 24, 50);
+      const bw = W - 48, bx = 24, by = 58;
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(bx, by, bw, 8);
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(bx, by, bw * (DATA.progress / 100), 8);
+    }}
+
+    function drawButtons() {{
+      const bx = W/2 - 70, by = H - 88;
+      ctx.fillStyle = waterCooldown > 0 ? '#475569' : '#2563eb';
+      ctx.beginPath();
+      ctx.roundRect(bx, by, 140, 36, 18);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 14px Segoe UI, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💧 Water tree', W/2, by + 23);
+      window._waterBtn = {{ x: bx, y: by, w: 140, h: 36 }};
+    }}
+
+    function waterTree() {{
+      if (waterCooldown > 0) return;
+      watered++;
+      waterCooldown = 45;
+      for (let i = 0; i < 24; i++) {{
+        drops.push({{
+          x: W/2 + (Math.random()-0.5)*80, y: 40,
+          vy: 2 + Math.random()*3, life: 40 + Math.random()*20
+        }});
+      }}
+    }}
+
+    canvas.addEventListener('click', e => {{
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+      const b = window._waterBtn;
+      if (b && mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h) {{
+        waterTree(); return;
+      }}
+      for (let i = orbs.length - 1; i >= 0; i--) {{
+        const o = orbs[i];
+        const dx = mx - o.x, dy = my - o.y;
+        if (dx*dx + dy*dy < (o.r+10)*(o.r+10)) {{
+          sunlight++;
+          orbs.splice(i, 1);
+          for (let j = 0; j < 10; j++) {{
+            particles.push({{
+              x: o.x, y: o.y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4,
+              life: 25, color: '#fbbf24'
+            }});
+          }}
+          return;
+        }}
+      }}
+    }});
+
+    function frame() {{
+      drawSky();
+      drawGround();
+      drawTree();
+      if (Math.random() < 0.02) spawnOrb();
+      orbs.forEach(o => {{
+        o.y += o.vy; o.x += Math.sin(o.phase)*0.4; o.phase += 0.05;
+        const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+        g.addColorStop(0, '#fff7cd'); g.addColorStop(1, 'rgba(251,191,36,0.2)');
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2);
+        ctx.fillStyle = g; ctx.fill();
+      }});
+      orbs = orbs.filter(o => o.y < H + 20);
+      drops.forEach(d => {{ d.y += d.vy; d.life--; ctx.fillStyle = 'rgba(96,165,250,0.7)'; ctx.fillRect(d.x, d.y, 2, 8); }});
+      drops = drops.filter(d => d.life > 0);
+      particles.forEach(p => {{
+        p.x += p.vx; p.y += p.vy; p.life--;
+        ctx.globalAlpha = p.life / 25;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }});
+      particles = particles.filter(p => p.life > 0);
+      if (waterCooldown > 0) waterCooldown--;
+      drawHUD();
+      drawButtons();
+      requestAnimationFrame(frame);
+    }}
+    frame();
+    </script>
+    """
+    components.html(html, height=height, scrolling=False)

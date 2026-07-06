@@ -176,6 +176,23 @@ def _create_multi_user_tables(conn):
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )"""
     )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS study_activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            log_date DATE NOT NULL,
+            subject TEXT DEFAULT '',
+            activity TEXT NOT NULL,
+            duration_hours REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_activity_logs_user_date "
+        "ON study_activity_logs(user_id, log_date)"
+    )
 
 
 def _migrate_legacy_schema(conn):
@@ -661,7 +678,15 @@ def get_export_dataframes():
             conn,
             params=(uid,),
         )
-    return {"study_hours": hours, "scheduled_tests": tests, "daily_targets": targets}
+    from logbook import get_activity_logs_export
+
+    activity_logs = get_activity_logs_export()
+    return {
+        "study_hours": hours,
+        "scheduled_tests": tests,
+        "daily_targets": targets,
+        "activity_logs": activity_logs,
+    }
 
 
 def _get_or_create_plan_id(plan_date, conn, user_id):
