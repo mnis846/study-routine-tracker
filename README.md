@@ -25,9 +25,9 @@ Track targets, log hours, grow your Study Garden, monitor test series, and maint
 2. `pip install -r requirements.txt`
 3. `streamlit run app.py`
 
-## Prototype Notes
-- Clean desktop/web-focused version ideal for pitching.
-- Deploy easily on Streamlit Community Cloud for demos.
+## Streamlit Community Cloud Ready
+- Perfect for quick hosting and testing.
+- Deploy directly from this repo for live demo & screenshots.
 
 ## Usage
 - Run the app daily for morning planning, hour logging, and evening reflection.
