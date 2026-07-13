@@ -1,23 +1,53 @@
-.web
-*.py[cod]
-assets/external/
-.states
-venv/
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local data & secrets
 *.db
-.web/
-reflex.lock/
+*.db-journal
+*.db-wal
+*.db-shm
 .env
 .streamlit/secrets.toml
-terminals/
-mcps/
-build/
-.dart_tool/
-.flet/
+tracker-launch.log
+*.log
+
+# Archives / build artifacts (never pitch these)
+*.zip
+*.tar
+*.tar.gz
 *.apk
 *.aab
+build/
+dist/
+.dart_tool/
+.flet/
 android/.buildozer/
 android/bin/
 android/.gradle/
+
+# Tooling / agent / IDE
+.web/
+.states/
+reflex.lock/
+terminals/
+mcps/
 agent-tools/
-tracker-launch.log
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Generated / external assets
+assets/external/
