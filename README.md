@@ -13,15 +13,22 @@ Local-first study tracker (targets, hours, garden map, stickers, break games) fo
 - **Show-up Heatmap** — GitHub-style consistency grid
 - **Break Games** — short reset mini-games
 - **Desktop Companion** — tray sticker / desktop watcher (Windows)
-- **Auth + multi-user** — per-user data isolation (Streamlit + Reflex)
+- **Local profile (no login)** — single-device SQLite profile; data stays on the machine
 - **Free / Pro tiers** — core free; advanced analytics & full garden path with Pro
 
 ## Tech Stack
 
 - **Streamlit** app (`app.py`) — primary full UI
-- **Reflex** app (`study_tracker/`) — modern multi-page UI on the same product surface
-- **SQLite** — `study_routine_tracker.db`
+- **Reflex** app (`study_tracker/`) — optional multi-page UI
+- **SQLite** — local file (see path in the app sidebar)
 - **Plotly / Pandas** — charts
+
+## Data storage
+
+- **No authentication** for now — the app opens straight into your study dashboard.
+- All progress is saved to a **local SQLite database** under a built-in `local` profile.
+- Desktop default: `study_routine_tracker.db` next to the app (or `TRACKER_DATA_DIR` if set).
+- Streamlit Community Cloud: `~/.study_routine_tracker/study_routine_tracker.db` (ephemeral between redeploys unless you export backups).
 
 ## Run (Streamlit)
 

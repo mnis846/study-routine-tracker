@@ -10,6 +10,9 @@ import pandas as pd
 _UNSET = object()
 DEFAULT_DAILY_GOAL_HOURS = 6.0
 LEGACY_USER_ID = 1
+LOCAL_USERNAME = "local"
+LOCAL_EMAIL = "local@study-tracker.local"
+LOCAL_DISPLAY_NAME = "Student"
 
 _current_user_id: contextvars.ContextVar[int | None] = contextvars.ContextVar(
     "user_id", default=None
@@ -21,7 +24,7 @@ class DatabaseError(Exception):
 
 
 class AuthRequiredError(DatabaseError):
-    """Raised when a data operation runs without a logged-in user."""
+    """Raised when a data operation runs without a local profile context."""
 
 
 def resolve_data_dir() -> Path:
@@ -51,9 +54,10 @@ def set_current_user(user_id: int):
 
 
 def get_current_user_id() -> int:
+    """Return the active local profile id (auto-creates the local user if needed)."""
     uid = _current_user_id.get()
     if uid is None:
-        raise AuthRequiredError("No authenticated user in this session.")
+        return ensure_local_user()
     return uid
 
 
@@ -372,6 +376,73 @@ def init_db():
             "SELECT name FROM sqlite_master WHERE type='table' AND name='scheduled_tests'"
         ).fetchone():
             _ensure_scheduled_tests_max_score(conn)
+    # Single-device mode: always attach the local profile after schema is ready
+    ensure_local_user()
+
+
+def ensure_local_user() -> int:
+    """
+    Ensure a single local profile exists and is set as the current user.
+
+    Auth is disabled for now — all study data is saved to the local SQLite file
+    under this profile (see get_db_path()).
+    """
+    with db_connection() as conn:
+        row = conn.execute(
+            "SELECT id, first_name FROM users WHERE username = ?",
+            (LOCAL_USERNAME,),
+        ).fetchone()
+        if row:
+            user_id = int(row["id"])
+        else:
+            conn.execute(
+                """INSERT INTO users
+                   (username, email, first_name, last_name, password_hash)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    LOCAL_USERNAME,
+                    LOCAL_EMAIL,
+                    LOCAL_DISPLAY_NAME,
+                    "",
+                    "local-no-password",
+                ),
+            )
+            user_id = int(
+                conn.execute(
+                    "SELECT id FROM users WHERE username = ?",
+                    (LOCAL_USERNAME,),
+                ).fetchone()[0]
+            )
+    provision_new_user(user_id)
+    set_current_user(user_id)
+    return user_id
+
+
+def get_local_display_name() -> str:
+    """Preferred display name stored in settings, else users.first_name."""
+    uid = get_current_user_id()
+    name = get_setting("display_name", None, user_id=uid)
+    if name and str(name).strip():
+        return str(name).strip()
+    with db_connection(commit=False) as conn:
+        row = conn.execute(
+            "SELECT first_name FROM users WHERE id = ?", (uid,)
+        ).fetchone()
+    if row and row["first_name"]:
+        return str(row["first_name"]).strip()
+    return LOCAL_DISPLAY_NAME
+
+
+def set_local_display_name(name: str) -> str:
+    cleaned = (name or "").strip() or LOCAL_DISPLAY_NAME
+    uid = get_current_user_id()
+    set_setting("display_name", cleaned, user_id=uid)
+    with db_connection() as conn:
+        conn.execute(
+            "UPDATE users SET first_name = ? WHERE id = ?",
+            (cleaned, uid),
+        )
+    return cleaned
 
 
 EXAM_TEST_COUNT = 0

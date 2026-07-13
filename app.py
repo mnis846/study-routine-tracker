@@ -6,7 +6,6 @@ import plotly.express as px
 import streamlit as st
 
 from app_styles import APP_CSS
-from auth import render_auth_gate
 from database import (
     DatabaseError,
     add_daily_study_hours,
@@ -15,9 +14,11 @@ from database import (
     get_daily_plan,
     get_daily_plan_summary,
     get_daily_study_goal,
+    get_db_path,
     get_export_dataframes,
     get_garden_state,
     get_garden_xp,
+    get_local_display_name,
     get_longest_streak,
     get_recent_study_hours,
     get_study_hours_for_date,
@@ -28,6 +29,7 @@ from database import (
     save_daily_targets,
     save_evening_reflection,
     set_daily_study_goal,
+    set_local_display_name,
     sync_daily_garden_bonuses,
     update_target_status,
 )
@@ -102,8 +104,11 @@ def period_nudge(period_key):
 
 
 def display_first_name():
-    name = st.session_state.get("name") or st.session_state.get("username") or "Student"
-    return name.split()[0]
+    try:
+        name = get_local_display_name()
+    except DatabaseError:
+        name = "Student"
+    return (name or "Student").split()[0]
 
 
 st.set_page_config(
@@ -116,14 +121,13 @@ st.set_page_config(
 st.markdown(GARDEN_CSS + APP_CSS + MOBILE_CSS, unsafe_allow_html=True)
 
 try:
-    init_db()
+    init_db()  # creates local SQLite profile; no login required
 except DatabaseError as exc:
     st.error(f"Could not initialize the database: {exc}")
     st.stop()
 
-authenticator = render_auth_gate()
 first_name = display_first_name()
-user_id = st.session_state["user_id"]
+user_id = "local"
 
 MORNING_END_HOUR = 12
 EVENING_START_HOUR = 17
@@ -199,9 +203,27 @@ def render_metric_rows(metric_rows):
 
 def render_sidebar():
     st.markdown(f"### Hi, {first_name}")
-    st.caption(st.session_state.get("username", ""))
+    st.caption("Local profile · data saved on this device")
     st.caption(f"{'⭐ Pro' if is_pro() else 'Free plan'}")
-    authenticator.logout(location="sidebar", key="study_logout")
+    st.divider()
+
+    st.markdown("**Your name**")
+    if "display_name_input" not in st.session_state:
+        st.session_state.display_name_input = first_name
+    new_name = st.text_input(
+        "Display name",
+        key="display_name_input",
+        label_visibility="collapsed",
+        max_chars=40,
+    )
+    if st.button("Save name", key="save_display_name", width="stretch"):
+        if run_db(
+            lambda: set_local_display_name(new_name),
+            "Could not save name",
+        ) is not None:
+            st.success("Name updated!")
+            st.rerun()
+
     st.divider()
     st.markdown("**Daily study goal**")
     if "daily_goal_input" not in st.session_state:
@@ -221,6 +243,11 @@ def render_sidebar():
         ) is not None:
             st.success("Daily goal updated!")
             st.rerun()
+
+    st.divider()
+    st.markdown("**Local data**")
+    st.caption(f"Database file:\n`{get_db_path()}`")
+    st.caption("Export a backup anytime from the sidebar tools below if available.")
     st.divider()
     render_pro_unlock_panel()
 
