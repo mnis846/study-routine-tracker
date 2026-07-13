@@ -7,6 +7,10 @@ from pathlib import Path
 import pandas as pd
 
 DB_PATH = str(Path(__file__).resolve().parent / "study_routine_tracker.db")
+
+
+def get_db_path():
+    return DB_PATH
 _UNSET = object()
 DEFAULT_DAILY_GOAL_HOURS = 6.0
 LEGACY_USER_ID = 1
@@ -149,6 +153,7 @@ def _create_multi_user_tables(conn):
             status TEXT DEFAULT 'Not Attempted',
             hours_studied REAL DEFAULT 0,
             score REAL,
+            max_score REAL,
             remarks TEXT,
             attempt_date DATE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -339,48 +344,20 @@ def init_db():
             _migrate_legacy_schema(conn)
         else:
             _create_multi_user_tables(conn)
+        if conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='scheduled_tests'"
+        ).fetchone():
+            _ensure_scheduled_tests_max_score(conn)
 
 
-MONSOON_TEST_COUNT = 32
-
-MONSOON_TESTS = [
-    (1, "Level-1", "Sectional", "Welfare policy & Act", "2026-06-29", "Paper-7/Part-I"),
-    (2, "Level-1", "Sectional", "Organizations & sports", "2026-07-03", "Paper-7/Part-II"),
-    (3, "Level-1", "Sectional", "Education & HRD", "2026-07-09", "Paper-7/Part-III"),
-    (4, "Level-1", "FLT", "Paper-7 Complete", "2026-07-13", "Full Length Test"),
-    (5, "Level-1", "Sectional", "Philosophy", "2026-07-18", "Paper-6/Part-I"),
-    (6, "Level-1", "Sectional", "Sociology", "2026-07-21", "Paper-6/Part-II"),
-    (7, "Level-1", "Sectional", "Social Aspect of C.G.", "2026-07-25", "Paper-6/Part-III"),
-    (8, "Level-1", "FLT", "Paper-6 Complete", "2026-07-31", "Full Length Test"),
-    (9, "Level-1", "Sectional", "Indian & C.G. Economy", "2026-08-04", "Paper-5/Part-I"),
-    (10, "Level-1", "Sectional", "Indian Geography", "2026-08-07", "Paper-5/Part-II"),
-    (11, "Level-1", "Sectional", "CG Geography", "2026-08-11", "Paper-5/Part-III"),
-    (12, "Level-1", "FLT", "Paper-5 Complete", "2026-08-17", "Full Length Test"),
-    (13, "Level-1", "Sectional", "General Science", "2026-08-21", "Paper-4/Part-I"),
-    (14, "Level-1", "Sectional", "Maths & Reasoning", "2026-08-24", "Paper-4/Part-II"),
-    (15, "Level-1", "Sectional", "Applied Science", "2026-09-01", "Paper-4/Part-III"),
-    (16, "Level-1", "FLT", "Paper-4 Complete", "2026-09-06", "Full Length Test"),
-    (17, "Level-1", "Sectional", "Hindi Language", "2026-09-09", "Paper-1/Part-I"),
-    (18, "Level-1", "Sectional", "English Language", "2026-09-12", "Paper-1/Part-II"),
-    (19, "Level-1", "Sectional", "Chhattisgarhi Language", "2026-09-15", "Paper-1/Part-III"),
-    (20, "Level-1", "FLT", "Paper-1 Complete", "2026-09-21", "Full Length Test"),
-    (21, "Level-1", "Sectional", "Indian History", "2026-09-25", "Paper-3/Part-I"),
-    (22, "Level-1", "Sectional", "Constitution & Pub Admin", "2026-09-28", "Paper-3/Part-II"),
-    (23, "Level-1", "Sectional", "CG History", "2026-10-02", "Paper-3/Part-III"),
-    (24, "Level-1", "FLT", "Paper-3 Complete", "2026-10-08", "Full Length Test"),
-    (25, "Level-1", "FLT", "Paper-2 Complete", "2026-10-15", "Full Length Test"),
-    (26, "Level-2", "FLT", "Paper-01 Complete Syllabus", "2026-10-26", "FLT-08"),
-    (27, "Level-2", "FLT", "Paper-02 Complete Syllabus", "2026-10-26", "FLT-09"),
-    (28, "Level-2", "FLT", "Paper-03 Complete Syllabus", "2026-10-27", "FLT-10"),
-    (29, "Level-2", "FLT", "Paper-04 Complete Syllabus", "2026-10-27", "FLT-11"),
-    (30, "Level-2", "FLT", "Paper-05 Complete Syllabus", "2026-10-28", "FLT-12"),
-    (31, "Level-2", "FLT", "Paper-06 Complete Syllabus", "2026-10-28", "FLT-13"),
-    (32, "Level-2", "FLT", "Paper-07 Complete Syllabus", "2026-10-29", "FLT-14"),
-]
+EXAM_TEST_COUNT = 0
+EXAM_TESTS = []
+MONSOON_TEST_COUNT = 0
+MONSOON_TESTS = []
 
 
 def _insert_monsoon_tests(conn, user_id):
-    rows = [(user_id, *test) for test in MONSOON_TESTS]
+    rows = [(user_id, *test) for test in EXAM_TESTS]
     conn.executemany(
         """INSERT INTO scheduled_tests
            (user_id, test_no, level, test_type, subject, scheduled_date, topic_focus)
@@ -390,7 +367,7 @@ def _insert_monsoon_tests(conn, user_id):
 
 
 def _needs_monsoon_migration(conn, user_id):
-    if _read_setting(conn, "monsoon_series_v1", user_id) == "1":
+    if _read_setting(conn, "exam_series_v1", user_id) == "1":
         return False
     count = conn.execute(
         "SELECT COUNT(*) FROM scheduled_tests WHERE user_id = ?", (user_id,)
@@ -402,38 +379,22 @@ def _needs_monsoon_migration(conn, user_id):
         (user_id,),
     ).fetchone()
     if not row:
-        return count < MONSOON_TEST_COUNT
-    return row[0] == "General Studies — History" or count < MONSOON_TEST_COUNT
+        return count < EXAM_TEST_COUNT
+    return row[0] == "General Studies — History" or count < EXAM_TEST_COUNT
 
 
 def seed_monsoon_tests_for_user(user_id):
-    """Seed the default exam test series schedule (32 tests) for one user."""
-    with db_connection() as conn:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM scheduled_tests WHERE user_id = ?", (user_id,)
-        ).fetchone()[0]
-        if count > 0:
-            if _needs_monsoon_migration(conn, user_id):
-                conn.execute(
-                    "DELETE FROM scheduled_tests WHERE user_id = ?", (user_id,)
-                )
-                _insert_monsoon_tests(conn, user_id)
-                _write_setting(conn, "monsoon_series_v1", "1", user_id)
-            elif _read_setting(conn, "monsoon_series_v1", user_id) != "1":
-                _write_setting(conn, "monsoon_series_v1", "1", user_id)
-            return
-        _insert_monsoon_tests(conn, user_id)
-        _write_setting(conn, "monsoon_series_v1", "1", user_id)
+    """No-op: mock schedules are not seeded."""
+    return
 
 
 def seed_sample_tests():
-    """Seed exam tests for the current authenticated user."""
-    seed_monsoon_tests_for_user(get_current_user_id())
+    """No-op: mock schedules are not seeded."""
+    return
 
 
 def provision_new_user(user_id):
     """Initialize per-user defaults after signup."""
-    seed_monsoon_tests_for_user(user_id)
     with db_connection() as conn:
         if _read_setting(conn, "daily_study_goal_hours", user_id) is None:
             _write_setting(
@@ -622,6 +583,97 @@ def get_study_streak():
         streak += 1
         cursor -= timedelta(days=1)
     return streak
+
+
+
+def _parse_log_date(value):
+    if isinstance(value, date):
+        return value
+    if hasattr(value, "date"):
+        try:
+            return value.date()
+        except TypeError:
+            pass
+    return date.fromisoformat(str(value)[:10])
+
+
+def default_max_score(test_type):
+    """Default total marks: full-length papers 200, sectionals 100."""
+    kind = (test_type or "").strip().upper()
+    if kind == "FLT":
+        return 200.0
+    return 100.0
+
+
+def score_percentage(score, max_score):
+    """Return marks as a 0-100 percentage, or None if either value is missing/invalid."""
+    if score is None or max_score is None:
+        return None
+    try:
+        if pd.isna(score) or pd.isna(max_score):
+            return None
+        max_val = float(max_score)
+        if max_val <= 0:
+            return None
+        return round(float(score) / max_val * 100, 1)
+    except (TypeError, ValueError):
+        return None
+
+
+def _ensure_scheduled_tests_max_score(conn):
+    """Add max_score column on existing DBs and backfill defaults by test type."""
+    if not _table_has_column(conn, "scheduled_tests", "max_score"):
+        conn.execute("ALTER TABLE scheduled_tests ADD COLUMN max_score REAL")
+    conn.execute(
+        """UPDATE scheduled_tests
+           SET max_score = CASE
+               WHEN UPPER(COALESCE(test_type, '')) = 'FLT' THEN 200
+               ELSE 100
+           END
+           WHERE max_score IS NULL OR max_score <= 0"""
+    )
+
+
+def get_study_hours_map(start_date, end_date=None):
+    """Return {date: hours} for each day in the inclusive range (current user)."""
+    if end_date is None:
+        end_date = date.today()
+    uid = get_current_user_id()
+    start_str = _date_str(start_date)
+    end_str = _date_str(end_date)
+    with db_connection(commit=False) as conn:
+        df = pd.read_sql(
+            """SELECT log_date, hours FROM daily_study_hours
+               WHERE user_id = ? AND log_date >= ? AND log_date <= ?""",
+            conn,
+            params=(uid, start_str, end_str),
+        )
+    result = {}
+    for _, row in df.iterrows():
+        result[_parse_log_date(row["log_date"])] = float(row["hours"])
+    return result
+
+
+def add_daily_target(plan_date, description, planned_hours=0):
+    """Append a single target to an existing or new daily plan."""
+    desc = (description or "").strip()
+    if not desc:
+        raise DatabaseError("Target description cannot be empty.")
+    uid = get_current_user_id()
+    with db_connection() as conn:
+        c = conn.cursor()
+        plan_id = _get_or_create_plan_id(plan_date, conn, uid)
+        c.execute(
+            "SELECT COALESCE(MAX(order_index), -1) FROM daily_target_items WHERE plan_id = ?",
+            (plan_id,),
+        )
+        next_index = int(c.fetchone()[0]) + 1
+        c.execute(
+            """INSERT INTO daily_target_items
+               (plan_id, description, planned_hours, order_index, status)
+               VALUES (?, ?, ?, ?, 'Pending')""",
+            (plan_id, desc, float(planned_hours or 0), next_index),
+        )
 
 
 def get_longest_streak():
@@ -1035,20 +1087,31 @@ def sync_daily_garden_bonuses(today=None):
     return rewards
 
 
-def get_garden_state(streak=0):
+def get_garden_state(streak=0, today=None):
     from garden import get_stage_info
+    from garden_life import sync_garden_life
 
+    if today is None:
+        today = date.today()
     xp = get_garden_xp()
+    life = sync_garden_life(today)
     return {
         "xp": xp,
         "streak": streak,
         "stage_info": get_stage_info(xp),
         "events": get_garden_events(8),
+        "life": life,
+        "vitality": life,
     }
 
 
 def update_scheduled_test(
-    test_no, status=None, hours_studied=_UNSET, score=_UNSET, remarks=_UNSET
+    test_no,
+    status=None,
+    hours_studied=_UNSET,
+    score=_UNSET,
+    max_score=_UNSET,
+    remarks=_UNSET,
 ):
     uid = get_current_user_id()
     updates = []
@@ -1062,6 +1125,9 @@ def update_scheduled_test(
     if score is not _UNSET:
         updates.append("score = ?")
         params.append(score)
+    if max_score is not _UNSET:
+        updates.append("max_score = ?")
+        params.append(max_score)
     if remarks is not _UNSET:
         updates.append("remarks = ?")
         params.append(remarks)

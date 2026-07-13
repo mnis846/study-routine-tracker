@@ -1,4 +1,4 @@
-"""Study coaches — aggressive desktop sticker characters for Manish."""
+"""Study coaches — aggressive desktop sticker characters for Student."""
 
 import random
 
@@ -52,7 +52,7 @@ COACHES = {
     },
     "deathstar": {
         "key": "deathstar",
-        "name": "Death Star",
+        "name": "Desktop companion",
         "title": "Imperial Station",
         "emoji": "🌑",
         "accent": "#94a3b8",

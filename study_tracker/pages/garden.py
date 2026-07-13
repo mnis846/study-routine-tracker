@@ -3,6 +3,8 @@
 import reflex as rx
 
 from study_tracker.components.layout import page_shell, stat_card
+from study_tracker.components.upgrade import upgrade_cta
+from study_tracker.core.config import FREE_GARDEN_MAX_STAGE
 from study_tracker.core.garden import GARDEN_STAGES, XP_REWARDS
 from study_tracker.states.tracker_state import TrackerState
 
@@ -17,10 +19,16 @@ def event_row(event: dict) -> rx.Component:
 
 
 def stage_badge(stage: dict, index: int) -> rx.Component:
+    locked = (index > FREE_GARDEN_MAX_STAGE) & ~TrackerState.is_pro
     return rx.badge(
         f"{stage['emoji']} {stage['name']}",
-        color=rx.cond(TrackerState.garden_xp >= stage["min_xp"], "green", "gray"),
+        color=rx.cond(
+            TrackerState.garden_xp >= stage["min_xp"],
+            rx.cond(locked, "amber", "green"),
+            rx.cond(locked, "gray", "gray"),
+        ),
         variant="soft",
+        class_name=rx.cond(locked, "opacity-70", ""),
     )
 
 
@@ -32,6 +40,22 @@ def garden_page() -> rx.Component:
             "Grow your tree as you study — XP from check-ins, hours, and targets.",
             class_name="text-slate-600",
         ),
+        rx.cond(
+            TrackerState.garden_free_capped,
+            rx.callout(
+                rx.vstack(
+                    rx.text(
+                        "Free plan caps growth at Young Sapling. Your XP still accumulates — unlock Pro to reveal higher stages.",
+                        class_name="text-sm",
+                    ),
+                    rx.link(rx.button("Unlock all stages", size="2", color="indigo"), href="/upgrade"),
+                    spacing="2",
+                ),
+                icon="lock",
+                color="amber",
+            ),
+            rx.fragment(),
+        ),
         rx.box(
             rx.center(
                 rx.vstack(
@@ -41,7 +65,7 @@ def garden_page() -> rx.Component:
                     spacing="3",
                     align="center",
                 ),
-                class_name="bg-gradient-to-b from-sky-100 to-emerald-100 rounded-2xl p-12 border border-emerald-200",
+                class_name="bg-gradient-to-b from-sky-100 to-emerald-100 rounded-2xl p-12 border border-emerald-200 shadow-sm",
             ),
         ),
         rx.grid(
@@ -59,14 +83,13 @@ def garden_page() -> rx.Component:
             icon="info",
             color="green",
         ),
+        rx.heading("Evolution stages", size="5", class_name="text-slate-800"),
         rx.flex(
-            *[
-                rx.badge(f"{s['emoji']} {s['name']}", variant="soft", color="green")
-                for s in GARDEN_STAGES
-            ],
+            *[stage_badge(s, i) for i, s in enumerate(GARDEN_STAGES)],
             wrap="wrap",
             gap="2",
         ),
+        rx.cond(~TrackerState.is_pro, upgrade_cta(), rx.fragment()),
         rx.cond(
             TrackerState.garden_events.length() > 0,
             rx.card(

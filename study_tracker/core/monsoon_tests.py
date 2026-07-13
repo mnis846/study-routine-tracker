@@ -1,36 +1,3 @@
-"""Default exam test series schedule (32 tests)."""
+"""Mock schedule removed — no default tests are seeded."""
 
-MONSOON_TESTS = [
-    (1, "Level-1", "Sectional", "Welfare policy & Act", "2026-06-29", "Paper-7/Part-I"),
-    (2, "Level-1", "Sectional", "Organizations & sports", "2026-07-03", "Paper-7/Part-II"),
-    (3, "Level-1", "Sectional", "Education & HRD", "2026-07-09", "Paper-7/Part-III"),
-    (4, "Level-1", "FLT", "Paper-7 Complete", "2026-07-13", "Full Length Test"),
-    (5, "Level-1", "Sectional", "Philosophy", "2026-07-18", "Paper-6/Part-I"),
-    (6, "Level-1", "Sectional", "Sociology", "2026-07-21", "Paper-6/Part-II"),
-    (7, "Level-1", "Sectional", "Social Aspect of C.G.", "2026-07-25", "Paper-6/Part-III"),
-    (8, "Level-1", "FLT", "Paper-6 Complete", "2026-07-31", "Full Length Test"),
-    (9, "Level-1", "Sectional", "Indian & C.G. Economy", "2026-08-04", "Paper-5/Part-I"),
-    (10, "Level-1", "Sectional", "Indian Geography", "2026-08-07", "Paper-5/Part-II"),
-    (11, "Level-1", "Sectional", "CG Geography", "2026-08-11", "Paper-5/Part-III"),
-    (12, "Level-1", "FLT", "Paper-5 Complete", "2026-08-17", "Full Length Test"),
-    (13, "Level-1", "Sectional", "General Science", "2026-08-21", "Paper-4/Part-I"),
-    (14, "Level-1", "Sectional", "Maths & Reasoning", "2026-08-24", "Paper-4/Part-II"),
-    (15, "Level-1", "Sectional", "Applied Science", "2026-09-01", "Paper-4/Part-III"),
-    (16, "Level-1", "FLT", "Paper-4 Complete", "2026-09-06", "Full Length Test"),
-    (17, "Level-1", "Sectional", "Hindi Language", "2026-09-09", "Paper-1/Part-I"),
-    (18, "Level-1", "Sectional", "English Language", "2026-09-12", "Paper-1/Part-II"),
-    (19, "Level-1", "Sectional", "Chhattisgarhi Language", "2026-09-15", "Paper-1/Part-III"),
-    (20, "Level-1", "FLT", "Paper-1 Complete", "2026-09-21", "Full Length Test"),
-    (21, "Level-1", "Sectional", "Indian History", "2026-09-25", "Paper-3/Part-I"),
-    (22, "Level-1", "Sectional", "Constitution & Pub Admin", "2026-09-28", "Paper-3/Part-II"),
-    (23, "Level-1", "Sectional", "CG History", "2026-10-02", "Paper-3/Part-III"),
-    (24, "Level-1", "FLT", "Paper-3 Complete", "2026-10-08", "Full Length Test"),
-    (25, "Level-1", "FLT", "Paper-2 Complete", "2026-10-15", "Full Length Test"),
-    (26, "Level-2", "FLT", "Paper-01 Complete Syllabus", "2026-10-26", "FLT-08"),
-    (27, "Level-2", "FLT", "Paper-02 Complete Syllabus", "2026-10-26", "FLT-09"),
-    (28, "Level-2", "FLT", "Paper-03 Complete Syllabus", "2026-10-27", "FLT-10"),
-    (29, "Level-2", "FLT", "Paper-04 Complete Syllabus", "2026-10-27", "FLT-11"),
-    (30, "Level-2", "FLT", "Paper-05 Complete Syllabus", "2026-10-28", "FLT-12"),
-    (31, "Level-2", "FLT", "Paper-06 Complete Syllabus", "2026-10-28", "FLT-13"),
-    (32, "Level-2", "FLT", "Paper-07 Complete Syllabus", "2026-10-29", "FLT-14"),
-]
+MONSOON_TESTS: list = []

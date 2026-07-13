@@ -1,5 +1,5 @@
 # Import phone database sync file into the PC tracker.
-# Usage: .\scripts\import_db.ps1 -SyncFile "D:\Downloads\cgpsc_mains_tracker_sync_20260702.db"
+# Usage: .\scripts\import_db.ps1 -SyncFile "D:\Downloads\study_routine_tracker_sync_20260702.db"
 
 param(
     [Parameter(Mandatory = $true)]

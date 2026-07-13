@@ -65,7 +65,7 @@ class StreamlitWebViewApp(App):
     def build(self):
         self.browser = None
         self.status = Label(
-            text="Starting CGPSC Mains Tracker...",
+            text="Starting Study Routine Tracker...",
             halign="center",
             valign="middle",
         )

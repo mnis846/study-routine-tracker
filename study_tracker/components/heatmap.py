@@ -90,9 +90,11 @@ def render_heatmap_html(
     streak: int = 0,
     daily_goal: float = 6.0,
     display_name: str = "Your",
+    variant: str = "default",
 ) -> str:
     grid = build_contribution_grid(hours_by_date, daily_goal=daily_goal)
-    cell = 11
+    hero = variant == "hero"
+    cell = 13 if hero else 11
     gap = 3
     col_w = cell + gap
     title_name = display_name if display_name.endswith("'s") else f"{display_name}'s"
@@ -127,24 +129,38 @@ def render_heatmap_html(
             cells.append(f'<div class="{cls}"{title}></div>')
 
     colors_css = "\n".join(f".gh-l{i} {{ background: {GITHUB_COLORS[i]}; }}" for i in range(5))
+    if hero:
+        shell = (
+            "background: linear-gradient(145deg, #0d1117 0%, #161b22 100%); "
+            "border: 1px solid #30363d; border-radius: 16px; padding: 20px 24px; "
+            "box-shadow: 0 8px 32px rgba(0,0,0,0.12);"
+        )
+        text_color = "#e6edf3"
+        muted = "#8b949e"
+        title_size = "15px"
+    else:
+        shell = "background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;"
+        text_color = "#24292f"
+        muted = "#64748b"
+        title_size = "12px"
 
     return f"""<style>
-  .gh-heatmap-root {{ font-family: system-ui, sans-serif; font-size: 12px; color: #24292f; }}
-  .gh-wrap {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; overflow-x: auto; }}
-  .gh-head {{ display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; flex-wrap: wrap; gap: 8px; }}
-  .gh-stats {{ color: #64748b; font-weight: 400; font-size: 11px; }}
+  .gh-heatmap-root {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: {title_size}; color: {text_color}; }}
+  .gh-wrap {{ {shell} overflow-x: auto; }}
+  .gh-head {{ display: flex; justify-content: space-between; margin-bottom: 12px; font-weight: 600; flex-wrap: wrap; gap: 8px; }}
+  .gh-stats {{ color: {muted}; font-weight: 400; font-size: 11px; }}
   .gh-graph {{ display: flex; gap: 4px; overflow-x: auto; }}
   .gh-dows {{ display: flex; flex-direction: column; padding-top: 15px; flex-shrink: 0; }}
-  .gh-dow {{ font-size: 9px; color: #94a3b8; line-height: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; width: 28px; }}
+  .gh-dow {{ font-size: 9px; color: {muted}; line-height: 1; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; width: 28px; }}
   .gh-weeks {{ flex: 1; min-width: 0; }}
   .gh-months {{ display: flex; height: 15px; margin-bottom: 2px; }}
-  .gh-month {{ font-size: 9px; color: #94a3b8; flex-shrink: 0; }}
+  .gh-month {{ font-size: 9px; color: {muted}; flex-shrink: 0; }}
   .gh-grid {{ display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, {cell}px); gap: {gap}px; grid-auto-columns: {cell}px; }}
   .gh-cell {{ width: {cell}px; height: {cell}px; border-radius: 2px; outline: 1px solid rgba(27,31,35,0.06); outline-offset: -1px; }}
   .gh-empty {{ background: transparent; outline: none; }}
-  .gh-today {{ outline: 1.5px solid #6366f1; outline-offset: -1px; }}
+  .gh-today {{ outline: 1.5px solid {"#a5b4fc" if hero else "#6366f1"}; outline-offset: -1px; }}
   {colors_css}
-  .gh-legend {{ display: flex; align-items: center; gap: 2px; margin-top: 8px; font-size: 10px; color: #94a3b8; justify-content: flex-end; }}
+  .gh-legend {{ display: flex; align-items: center; gap: 2px; margin-top: 10px; font-size: 10px; color: {muted}; justify-content: flex-end; }}
   .gh-legend .gh-cell {{ width: 10px; height: 10px; }}
 </style>
 <div class="gh-heatmap-root">

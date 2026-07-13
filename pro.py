@@ -8,7 +8,7 @@ from database import get_setting, set_setting
 from garden import GARDEN_STAGES
 
 FREE_MAX_TARGETS = 3
-FREE_GARDEN_MAX_STAGE = 3  # stages 0–3 (Seed → Young Sapling)
+FREE_GARDEN_MAX_STAGE = 3  # stages 0–3 free; higher stages require Pro
 PRO_SETTING_KEY = "pro_unlocked"
 PRO_UNLOCKED_AT_KEY = "pro_unlocked_at"
 
@@ -56,7 +56,7 @@ def unlock_with_code(code):
 
     set_setting(PRO_SETTING_KEY, "1")
     set_setting(PRO_UNLOCKED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
-    return True, "Pro unlocked! Enjoy unlimited targets, full test series, and more."
+    return True, "Pro unlocked! Enjoy unlimited targets, full garden path, and more."
 
 
 def free_target_cap_reached(count):
@@ -96,8 +96,7 @@ def effective_garden_stage_index(xp):
 def pro_feature_label(feature):
     labels = {
         "targets": "Unlimited daily targets",
-        "tests": "Full test series + score tracking",
-        "garden": "All 10 garden evolution stages",
+                "garden": "All 10 garden evolution stages",
         "export": "CSV data export",
         "analytics": "Extended analytics & longest streak",
     }
@@ -147,7 +146,7 @@ def render_pro_unlock_panel():
 
     st.markdown("**Upgrade to Pro**")
     st.caption(
-        f"One-time ₹{cfg['price_inr']} — unlimited targets, full test series, "
+        f"One-time ₹{cfg['price_inr']} — unlimited targets, full garden path, "
         "complete garden, CSV export."
     )
     render_upgrade_cta()

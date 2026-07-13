@@ -2,7 +2,7 @@
 
 import reflex as rx
 
-from study_tracker.components.layout import page_shell, stat_card
+from study_tracker.components.layout import heatmap_section, page_shell, stat_card
 from study_tracker.states.tracker_state import TrackerState
 
 
@@ -10,16 +10,7 @@ from study_tracker.states.tracker_state import TrackerState
 def dashboard_page() -> rx.Component:
     return page_shell(
         TrackerState.greeting,
-        rx.callout(
-            "Show up daily. Grow your knowledge.",
-            icon="sparkles",
-            color="indigo",
-        ),
-        rx.cond(
-            TrackerState.heatmap_html != "",
-            rx.box(dangerously_set_inner_html={"__html": TrackerState.heatmap_html}),
-            rx.fragment(),
-        ),
+        heatmap_section(),
         rx.grid(
             stat_card("Study streak", f"{TrackerState.streak} days"),
             stat_card("Daily goal", f"{TrackerState.daily_goal} h"),
@@ -35,29 +26,29 @@ def dashboard_page() -> rx.Component:
         ),
         rx.box(
             rx.hstack(
-                rx.text("Today's hours", class_name="font-medium"),
-                rx.badge(f"{TrackerState.today_hours}h / {TrackerState.daily_goal}h goal"),
+                rx.text("Today's hours", class_name="font-medium text-slate-800"),
+                rx.badge(f"{TrackerState.today_hours}h / {TrackerState.daily_goal}h goal", color="indigo"),
                 justify="between",
             ),
-            rx.progress(value=TrackerState.goal_progress_pct, width="100%", class_name="mt-2"),
-            class_name="bg-white rounded-xl border border-slate-200 p-4",
+            rx.progress(value=TrackerState.goal_progress_pct, width="100%", class_name="mt-3"),
+            class_name="bg-white rounded-xl border border-slate-200 p-5 shadow-sm",
         ),
         rx.cond(
             TrackerState.has_plan,
             rx.box(
-                rx.heading("Today's targets", size="5"),
+                rx.heading("Today's targets", size="5", class_name="text-slate-900"),
                 rx.text(
                     f"{TrackerState.plan_done}/{TrackerState.plan_total} done · "
                     f"{TrackerState.plan_resolved_pct}% resolved",
                     class_name="text-slate-600",
                 ),
-                rx.link(rx.button("Manage targets", variant="soft"), href="/targets"),
-                class_name="bg-white rounded-xl border border-slate-200 p-4 space-y-3",
+                rx.link(rx.button("Manage targets", variant="soft", color="indigo"), href="/targets"),
+                class_name="bg-white rounded-xl border border-slate-200 p-5 space-y-3 shadow-sm",
             ),
             rx.callout(
                 rx.vstack(
                     rx.text("No targets set for today."),
-                    rx.link(rx.button("Set targets", size="2"), href="/targets"),
+                    rx.link(rx.button("Set targets", size="2", color="indigo"), href="/targets"),
                     spacing="2",
                 ),
                 icon="target",
@@ -72,7 +63,7 @@ def dashboard_page() -> rx.Component:
                         rx.text("Log hours", class_name="font-medium"),
                         align="center",
                     ),
-                    class_name="p-6 hover:shadow-md transition-shadow",
+                    class_name="p-6 hover:shadow-md hover:border-indigo-200 transition-all",
                 ),
                 href="/hours",
             ),
@@ -83,7 +74,7 @@ def dashboard_page() -> rx.Component:
                         rx.text("Visit garden", class_name="font-medium"),
                         align="center",
                     ),
-                    class_name="p-6 hover:shadow-md transition-shadow",
+                    class_name="p-6 hover:shadow-md hover:border-emerald-200 transition-all",
                 ),
                 href="/garden",
             ),

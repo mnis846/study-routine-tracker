@@ -12,7 +12,7 @@ from study_tracker.pages import register as register
 from study_tracker.pages import settings as settings
 from study_tracker.pages import sticker as sticker
 from study_tracker.pages import targets as targets
-from study_tracker.pages import tests as tests
+from study_tracker.pages import upgrade as upgrade
 
 __all__ = [
     "admin",
@@ -27,5 +27,5 @@ __all__ = [
     "settings",
     "sticker",
     "targets",
-    "tests",
+    "upgrade",
 ]

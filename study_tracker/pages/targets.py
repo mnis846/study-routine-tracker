@@ -3,6 +3,7 @@
 import reflex as rx
 
 from study_tracker.components.layout import page_shell
+from study_tracker.components.upgrade import upgrade_cta
 from study_tracker.states.tracker_state import TrackerState
 
 
@@ -45,6 +46,15 @@ def target_row(item: dict) -> rx.Component:
     )
 
 
+def target_input(placeholder: str, value: rx.Var, handler) -> rx.Component:
+    return rx.input(
+        placeholder=placeholder,
+        value=value,
+        on_change=handler,
+        width="100%",
+    )
+
+
 @rx.page(route="/targets", title="Targets — Study Tracker", on_load=TrackerState.guard_load_targets)
 def targets_page() -> rx.Component:
     return page_shell(
@@ -54,36 +64,34 @@ def targets_page() -> rx.Component:
             rx.callout(TrackerState.free_target_hint, icon="info", color="blue"),
             rx.fragment(),
         ),
+        rx.cond(~TrackerState.is_pro, upgrade_cta(), rx.fragment()),
         rx.card(
             rx.vstack(
                 rx.heading("Set today's targets", size="5"),
-                rx.input(
-                    placeholder="Target 1",
-                    value=TrackerState.target_1,
-                    on_change=TrackerState.set_target_1,
-                    width="100%",
-                ),
-                rx.input(
-                    placeholder="Target 2",
-                    value=TrackerState.target_2,
-                    on_change=TrackerState.set_target_2,
-                    width="100%",
-                ),
-                rx.input(
-                    placeholder="Target 3",
-                    value=TrackerState.target_3,
-                    on_change=TrackerState.set_target_3,
-                    width="100%",
+                target_input("Target 1", TrackerState.target_1, TrackerState.set_target_1),
+                target_input("Target 2", TrackerState.target_2, TrackerState.set_target_2),
+                target_input("Target 3", TrackerState.target_3, TrackerState.set_target_3),
+                rx.cond(
+                    TrackerState.is_pro,
+                    rx.vstack(
+                        target_input("Target 4 (Pro)", TrackerState.target_4, TrackerState.set_target_4),
+                        target_input("Target 5 (Pro)", TrackerState.target_5, TrackerState.set_target_5),
+                        target_input("Target 6 (Pro)", TrackerState.target_6, TrackerState.set_target_6),
+                        spacing="3",
+                        width="100%",
+                    ),
+                    rx.fragment(),
                 ),
                 rx.button(
                     "Save targets",
                     on_click=TrackerState.save_daily_targets,
                     width="100%",
+                    color="indigo",
                 ),
                 spacing="3",
                 width="100%",
             ),
-            class_name="p-4",
+            class_name="p-5",
         ),
         rx.cond(
             TrackerState.has_plan,

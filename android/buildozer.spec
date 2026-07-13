@@ -1,7 +1,7 @@
 [app]
-title = CGPSC Mains Tracker
-package.name = cgpscmainstracker
-package.domain = com.manish.cgpsc
+title = Study Routine Tracker
+package.name = studyroutinetracker
+package.domain = com.study.routinetracker
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,db,toml
 version = 1.0.0

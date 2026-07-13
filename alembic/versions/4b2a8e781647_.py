@@ -50,12 +50,11 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_user_username'), ['username'], unique=True)
 
     op.create_table('appsetting',
-    sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('key', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('value', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
-    sa.PrimaryKeyConstraint('id', 'user_id', 'key')
+    sa.PrimaryKeyConstraint('user_id', 'key')
     )
     op.create_table('dailyplan',
     sa.Column('id', sa.Integer(), nullable=False),

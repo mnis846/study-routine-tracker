@@ -6,7 +6,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 
 class UserRole(str, Enum):
@@ -29,8 +29,6 @@ class Institute(SQLModel, table=True):
     slug: str = Field(unique=True, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    users: list["User"] = Relationship(back_populates="institute")
-
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -44,9 +42,6 @@ class User(SQLModel, table=True):
     institute_id: Optional[int] = Field(default=None, foreign_key="institute.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    institute: Optional[Institute] = Relationship(back_populates="users")
-    settings: list["AppSetting"] = Relationship(back_populates="user")
-
 
 class DailyPlan(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -55,8 +50,6 @@ class DailyPlan(SQLModel, table=True):
     evening_reflection: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    items: list["DailyTargetItem"] = Relationship(back_populates="plan")
 
 
 class DailyTargetItem(SQLModel, table=True):
@@ -68,8 +61,6 @@ class DailyTargetItem(SQLModel, table=True):
     status: str = "Pending"
     actual_hours: float = 0.0
     completion_notes: str = ""
-
-    plan: Optional[DailyPlan] = Relationship(back_populates="items")
 
 
 class DailyStudyHours(SQLModel, table=True):
@@ -103,8 +94,6 @@ class AppSetting(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", primary_key=True)
     key: str = Field(primary_key=True)
     value: str
-
-    user: Optional[User] = Relationship(back_populates="settings")
 
 
 class GardenEvent(SQLModel, table=True):

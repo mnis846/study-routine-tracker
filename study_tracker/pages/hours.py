@@ -2,7 +2,8 @@
 
 import reflex as rx
 
-from study_tracker.components.layout import page_shell, stat_card
+from study_tracker.components.layout import heatmap_section, page_shell, stat_card
+from study_tracker.components.upgrade import upgrade_cta
 from study_tracker.states.tracker_state import TrackerState
 
 
@@ -19,6 +20,7 @@ def week_row(day: dict) -> rx.Component:
         rx.table.cell(day["day"]),
         rx.table.cell(day["log_date"]),
         rx.table.cell(f"{day['hours']}h"),
+        class_name=rx.cond(day["is_today"], "bg-indigo-50", ""),
     )
 
 
@@ -30,10 +32,17 @@ def hours_page() -> rx.Component:
             stat_card("Today", f"{TrackerState.today_hours}h"),
             stat_card("This week", f"{TrackerState.week_total}h"),
             stat_card("Goal progress", f"{TrackerState.goal_progress_pct}%"),
-            columns="3",
+            rx.cond(
+                TrackerState.is_pro,
+                stat_card("Longest streak", f"{TrackerState.longest_streak}d"),
+                stat_card("Longest streak", "Pro", sub="Unlock on /upgrade"),
+            ),
+            columns="4",
             spacing="4",
             width="100%",
+            class_name="grid-cols-2 lg:grid-cols-4",
         ),
+        heatmap_section(),
         rx.card(
             rx.vstack(
                 rx.heading("Log study time", size="5"),
@@ -53,18 +62,36 @@ def hours_page() -> rx.Component:
                         on_change=TrackerState.set_log_notes,
                         flex="1",
                     ),
-                    rx.button("Save", on_click=TrackerState.log_study_hours),
+                    rx.button("Save", on_click=TrackerState.log_study_hours, color="indigo"),
                     width="100%",
                     spacing="3",
                 ),
                 spacing="3",
                 width="100%",
             ),
-            class_name="p-4",
+            class_name="p-5",
         ),
         rx.card(
             rx.vstack(
-                rx.heading("This week", size="5"),
+                rx.hstack(
+                    rx.heading("This week", size="5"),
+                    rx.cond(
+                        TrackerState.is_pro,
+                        rx.button(
+                            "Export CSV",
+                            variant="soft",
+                            on_click=TrackerState.export_study_csv,
+                            color="indigo",
+                        ),
+                        rx.link(
+                            rx.button("Export CSV (Pro)", variant="outline", size="2"),
+                            href="/upgrade",
+                        ),
+                    ),
+                    justify="between",
+                    align="center",
+                    width="100%",
+                ),
                 rx.table.root(
                     rx.table.header(
                         rx.table.row(
@@ -79,8 +106,9 @@ def hours_page() -> rx.Component:
                 spacing="3",
                 width="100%",
             ),
-            class_name="p-4",
+            class_name="p-5",
         ),
+        rx.cond(~TrackerState.is_pro, upgrade_cta(), rx.fragment()),
         rx.cond(
             TrackerState.recent_hours.length() > 0,
             rx.card(
@@ -102,7 +130,7 @@ def hours_page() -> rx.Component:
                     spacing="3",
                     width="100%",
                 ),
-                class_name="p-4",
+                class_name="p-5",
             ),
             rx.fragment(),
         ),

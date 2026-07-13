@@ -1,47 +1,63 @@
 # Study Routine Tracker
 
-**A gamified daily study planner for any competitive exam or academic goals.**
+A gamified, local-first study planner for **any competitive exam or academic goal**.
 
-Track targets, log hours, grow your Study Garden, monitor test series, and maintain consistency with streaks and rewards.
+Local-first study tracker (targets, hours, garden map, stickers, break games) for any exam or academic goal.
 
 ## Features
-- **Daily Targets**: Set and check off study goals with mobile-friendly UI.
-- **Hours Logging**: Quick and detailed study time tracking with weekly charts.
-- **Study Garden**: Gamified progress — earn XP, level up your tree (Star Wars themed stickers!).
-- **Test Series Tracker**: Schedule mocks, log scores and hours (Pro).
-- **Logbook**: Activity entries with customizable subjects.
-- **Streak & Heatmap**: GitHub-style consistency visualization.
-- **Break Games**: Short relaxing mini-games.
-- **Mobile-Friendly**: Responsive design for phones/tablets (Streamlit).
-- **Free/Pro Tiers**: Core free, advanced features unlocked with Pro.
+
+- **Daily Targets** — plan and check off goals morning → evening
+- **Hours Logging** — daily goal, streak, weekly charts
+- **Logbook** — subject + activity journal
+- **Study Garden** — XP stages + long-prep grove map (foundation path → exam sprint)
+- **Show-up Heatmap** — GitHub-style consistency grid
+- **Break Games** — short reset mini-games
+- **Desktop Companion** — tray sticker / desktop watcher (Windows)
+- **Auth + multi-user** — per-user data isolation (Streamlit + Reflex)
+- **Free / Pro tiers** — core free; advanced analytics & full garden path with Pro
 
 ## Tech Stack
-- Python + Streamlit
-- SQLite database (local-first)
-- Plotly for charts
 
-## Installation (Desktop)
-1. Clone or download this repo.
-2. `pip install -r requirements.txt`
-3. `streamlit run app.py`
+- **Streamlit** app (`app.py`) — primary full UI
+- **Reflex** app (`study_tracker/`) — modern multi-page UI on the same product surface
+- **SQLite** — `study_routine_tracker.db`
+- **Plotly / Pandas** — charts
 
-## Streamlit Community Cloud Ready
-- Perfect for quick hosting and testing.
-- Deploy directly from this repo for live demo & screenshots.
+## Run (Streamlit)
 
-## Usage
-- Run the app daily for morning planning, hour logging, and evening reflection.
-- Consistency builds your garden and streaks — perfect for any long-term exam preparation or study goals.
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
 
-## Screenshots
-(Add images here)
+## Run (Reflex)
 
-## Contributing
-Pull requests welcome! Especially subject customizations or new features for different exams.
+```bash
+pip install -r requirements-reflex.txt
+reflex run
+```
+
+## Desktop companion
+
+```bash
+python desktop_companion.py
+```
+
+Or use `Start Tracker.bat` / `launchers/`.
+
+## Terminology
+
+Exam-specific labels from the source tracker are generalized:
+
+| Source term | This project |
+| --- | --- |
+| CGPSC / Mains | Exam prep / Study Routine |
+| Prelims path | Foundation path |
+| Mains sprint | Exam sprint |
+| State-specific papers | Generic papers / regional subjects |
+
+Customize subjects and daily goals for your own exam.
 
 ## License
-MIT
 
-Built by an aspirant for aspirants. Focus on showing up daily! 📚🌳
-
-**GitHub**: https://github.com/mnis846/study-routine-tracker
+MIT — built by aspirants, for aspirants. Show up daily.

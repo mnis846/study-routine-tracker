@@ -6,7 +6,7 @@ from pathlib import Path
 
 from database import DatabaseError, get_db_path
 
-SYNC_FILE_PREFIX = "cgpsc_mains_tracker_sync"
+SYNC_FILE_PREFIX = "study_routine_tracker_sync"
 
 
 def _sqlite_backup(src: Path, dest: Path):

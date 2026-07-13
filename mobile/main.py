@@ -1,4 +1,4 @@
-"""CGPSC Mains Tracker — Flet mobile app (Android APK)."""
+"""Study Routine Tracker — Flet mobile app (Android APK)."""
 
 import os
 import sys
@@ -20,21 +20,16 @@ from database import (  # noqa: E402
     get_daily_study_goal,
     get_garden_state,
     get_longest_streak,
-    get_next_scheduled_test,
     get_recent_study_hours,
-    get_scheduled_tests,
     get_study_hours_for_date,
     get_study_streak,
-    get_test_series_progress,
     get_week_study_hours,
     init_db,
     process_daily_checkin,
     save_daily_targets,
     save_evening_reflection,
-    seed_sample_tests,
     set_daily_study_goal,
     sync_daily_garden_bonuses,
-    update_scheduled_test,
     update_target_status,
 )
 from logbook import (  # noqa: E402
@@ -138,7 +133,6 @@ class TrackerApp:
             os.environ["TRACKER_DATA_DIR"] = data_dir
         try:
             init_db()
-            seed_sample_tests()
             self.session_ready = True
         except DatabaseError as exc:
             self.body.controls = [
@@ -166,7 +160,7 @@ class TrackerApp:
         self.refresh_tab()
 
     def build_shell(self):
-        self.page.title = f"{FIRST_NAME}'s CGPSC Mains Tracker"
+        self.page.title = f"{FIRST_NAME}'s Study Routine Tracker"
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.bgcolor = BG
         self.page.padding = 0
@@ -179,7 +173,6 @@ class TrackerApp:
                 ft.Tab(label="Targets", icon=ft.Icons.CHECKLIST),
                 ft.Tab(label="Hours", icon=ft.Icons.SCHEDULE),
                 ft.Tab(label="Logbook", icon=ft.Icons.MENU_BOOK),
-                ft.Tab(label="Tests", icon=ft.Icons.EDIT_NOTE),
                 ft.Tab(label="Garden", icon=ft.Icons.PARK),
                 ft.Tab(label="Sync", icon=ft.Icons.SYNC),
             ],
@@ -190,7 +183,7 @@ class TrackerApp:
             content=ft.Column(
                 [
                     ft.Text(
-                        f"🎯 {possessive('CGPSC Mains Tracker')}",
+                        f"🎯 {possessive('Study Routine Tracker')}",
                         size=20,
                         weight=ft.FontWeight.BOLD,
                         color="#FFFFFF",
@@ -270,7 +263,6 @@ class TrackerApp:
             self.build_targets_tab,
             self.build_hours_tab,
             self.build_logbook_tab,
-            self.build_tests_tab,
             self.build_garden_tab,
             self.build_sync_tab,
         ]
@@ -844,154 +836,6 @@ class TrackerApp:
                     border=ft.border.all(1, CARD_BORDER),
                     border_radius=12,
                     padding=12,
-                )
-            )
-
-    def build_tests_tab(self):
-        next_test = get_next_scheduled_test()
-        progress = get_test_series_progress()
-        completion_pct = (
-            round(progress["attempted"] / progress["total"] * 100) if progress["total"] else None
-        )
-
-        self.body.controls.append(section_title(f"Monsoon Test Series {EXAM_YEAR}"))
-        if next_test:
-            test_date = str(next_test["scheduled_date"])[:10]
-            days_left = (
-                date.fromisoformat(test_date) - self.today
-            ).days
-            countdown = (
-                f"{days_left} day(s) away"
-                if days_left > 0
-                else "Today!" if days_left == 0 else "Overdue"
-            )
-            self.body.controls.append(
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text(f"{FIRST_NAME}'s Next Test", weight=ft.FontWeight.BOLD, color="#FFFFFF"),
-                            ft.Text(
-                                f"Test #{int(next_test['test_no'])} — {next_test['subject']}",
-                                color="#FFFFFF",
-                                size=16,
-                            ),
-                            ft.Text(
-                                f"{test_date} · {countdown} · {next_test['test_type']}",
-                                color="#E2E8F0",
-                                size=12,
-                            ),
-                        ],
-                        spacing=4,
-                    ),
-                    gradient=ft.LinearGradient(colors=["#2C5282", ACCENT]),
-                    border_radius=12,
-                    padding=16,
-                )
-            )
-
-        self.body.controls.append(
-            ft.Row(
-                [
-                    metric_card("Attempted", f"{progress['attempted']}/{progress['total']}"),
-                    metric_card(
-                        "Avg score",
-                        str(progress["avg_score"]) if progress["avg_score"] else "—",
-                    ),
-                    metric_card(
-                        "Completion",
-                        f"{completion_pct}%" if completion_pct is not None else "—",
-                    ),
-                ],
-                spacing=8,
-            )
-        )
-
-        df = get_scheduled_tests()
-        editors = []
-        for _, row in df.iterrows():
-            status_dd = ft.Dropdown(
-                value=row["status"] or "Not Attempted",
-                options=[
-                    ft.dropdown.Option("Not Attempted"),
-                    ft.dropdown.Option("Attempted"),
-                ],
-                width=140,
-            )
-            score_field = ft.TextField(
-                value="" if row["score"] is None else str(int(row["score"])),
-                label="Score",
-                width=80,
-                keyboard_type=ft.KeyboardType.NUMBER,
-            )
-            remarks_field = ft.TextField(
-                value=str(row["remarks"] or ""),
-                label="Notes",
-                expand=True,
-            )
-            editors.append((int(row["test_no"]), row, status_dd, score_field, remarks_field))
-            self.body.controls.append(
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text(
-                                f"#{int(row['test_no'])} {row['subject']}",
-                                weight=ft.FontWeight.W_600,
-                                color=NAVY,
-                            ),
-                            ft.Text(str(row["scheduled_date"])[:10], size=11, color="#718096"),
-                            ft.Row([status_dd, score_field]),
-                            remarks_field,
-                        ],
-                        spacing=6,
-                    ),
-                    bgcolor="#FFFFFF",
-                    border=ft.border.all(1, CARD_BORDER),
-                    border_radius=12,
-                    padding=12,
-                )
-            )
-
-        def save_tests(_):
-            changed = 0
-            for test_no, original, status_dd, score_field, remarks_field in editors:
-                status = status_dd.value
-                score = None
-                if status == "Attempted":
-                    if not score_field.value.strip():
-                        snack(self.page, f"Test #{test_no}: enter a score.", "#C53030")
-                        return
-                    score = float(score_field.value)
-                original_status = original["status"] or "Not Attempted"
-                original_score = original["score"]
-                original_remarks = original["remarks"] or ""
-                if (
-                    status == original_status
-                    and score == original_score
-                    and remarks_field.value == original_remarks
-                ):
-                    continue
-                if run_db(
-                    self.page,
-                    lambda tn=test_no, st=status, sc=score, rm=remarks_field.value: update_scheduled_test(
-                        tn, status=st, score=sc, remarks=rm
-                    ),
-                    f"Could not save test #{test_no}",
-                ) is None:
-                    return
-                changed += 1
-            if changed:
-                snack(self.page, f"Saved {changed} test update(s).")
-                self.refresh_tab()
-            else:
-                snack(self.page, "No changes to save.", "#4A5568")
-
-        if editors:
-            self.body.controls.append(
-                ft.ElevatedButton(
-                    "Save test results",
-                    bgcolor=PRIMARY,
-                    color="#FFFFFF",
-                    on_click=save_tests,
                 )
             )
 

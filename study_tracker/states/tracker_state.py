@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, datetime
 
 import reflex as rx
 
-from study_tracker.components.heatmap import render_heatmap_html
+from study_tracker.components.heatmap import build_contribution_grid, render_heatmap_html
 from study_tracker.core.config import FREE_MAX_TARGETS
+from study_tracker.core.pro_config import pro_config
+from study_tracker.services.subscription_service import unlock_with_code
 from study_tracker.services.tracker_service import (
     add_activity_log,
     add_study_hours,
     delete_activity_log,
+    export_csv_rows,
     garden_snapshot,
     get_activity_logs,
     get_daily_goal,
@@ -20,10 +25,8 @@ from study_tracker.services.tracker_service import (
     get_longest_streak,
     get_plan_summary,
     get_recent_hours,
-    get_scheduled_tests,
     get_study_hours_for_date,
     get_study_streak,
-    get_test_progress,
     get_week_hours,
     process_daily_checkin,
     save_reflection,
@@ -31,7 +34,6 @@ from study_tracker.services.tracker_service import (
     set_daily_goal,
     sync_daily_bonuses,
     update_target_status,
-    update_test,
 )
 from study_tracker.states.auth_state import AuthState
 
@@ -49,11 +51,6 @@ class TrackerState(AuthState):
     week_hours: list[dict] = []
     recent_hours: list[dict] = []
     activity_logs: list[dict] = []
-    tests: list[dict] = []
-    test_progress: dict = {}
-    tests_attempted: int = 0
-    tests_total: int = 0
-    tests_total_hours: float = 0.0
     garden_events: list[dict] = []
     stage_name: str = "Dormant Seed"
     stage_emoji: str = "🌰"
@@ -63,6 +60,9 @@ class TrackerState(AuthState):
     target_1: str = ""
     target_2: str = ""
     target_3: str = ""
+    target_4: str = ""
+    target_5: str = ""
+    target_6: str = ""
     has_plan: bool = False
     plan_done: int = 0
     plan_total: int = 0
@@ -78,6 +78,17 @@ class TrackerState(AuthState):
     break_game: str = "Bubble Pop"
     sticker_coach: str = "yoda"
     heatmap_html: str = ""
+    heatmap_showups: int = 0
+    heatmap_total_hours: float = 0.0
+    garden_free_capped: bool = False
+
+    unlock_code: str = ""
+    unlock_message: str = ""
+    unlock_success: bool = False
+    pro_price_inr: int = 499
+    academy_price_inr: int = 2999
+    pro_payment_link: str = ""
+    pro_support_email: str = ""
 
     def _guard(self):
         return self._try_restore_session()
@@ -111,12 +122,6 @@ class TrackerState(AuthState):
         self.load_logbook()
 
     @rx.event
-    def guard_load_tests(self):
-        redirect = self._guard()
-        if redirect:
-            return redirect
-        self.load_tests()
-
     @rx.event
     def guard_load_garden(self):
         redirect = self._guard()
@@ -137,6 +142,48 @@ class TrackerState(AuthState):
             return redirect
 
     @rx.event
+    def guard_load_upgrade(self):
+        redirect = self._guard()
+        if redirect:
+            return redirect
+        self.load_upgrade()
+
+    @rx.event
+    def guard_load_settings(self):
+        redirect = self._guard()
+        if redirect:
+            return redirect
+        self.load_hours()
+        self.load_upgrade()
+
+    def _apply_pro_config(self) -> None:
+        cfg = pro_config()
+        self.pro_price_inr = cfg["price_inr"]
+        self.academy_price_inr = cfg["academy_price_inr"]
+        self.pro_payment_link = cfg["payment_link"]
+        self.pro_support_email = cfg["support_email"]
+
+    @rx.event
+    def load_upgrade(self) -> None:
+        self._apply_pro_config()
+
+    def _build_heatmap(self, uid: int) -> None:
+        raw_hours = get_heatmap_hours(uid)
+        hours_by_date = {
+            datetime.strptime(k, "%Y-%m-%d").date(): v for k, v in raw_hours.items()
+        }
+        grid = build_contribution_grid(hours_by_date, daily_goal=self.daily_goal)
+        self.heatmap_showups = grid["showups"]
+        self.heatmap_total_hours = round(grid["total_hours"], 1)
+        self.heatmap_html = render_heatmap_html(
+            hours_by_date,
+            streak=self.streak,
+            daily_goal=self.daily_goal,
+            display_name=self.display_name,
+            variant="hero",
+        )
+
+    @rx.event
     def load_dashboard(self) -> None:
         if not self.is_authenticated:
             return
@@ -154,6 +201,7 @@ class TrackerState(AuthState):
         self.stage_name = info["current"]["name"]
         self.stage_emoji = info["current"]["emoji"]
         self.stage_progress = info["progress"]
+        self.garden_free_capped = bool(info.get("free_capped"))
         process_daily_checkin(uid, self.streak)
         sync_daily_bonuses(uid, today)
         summary = get_plan_summary(uid, today)
@@ -163,16 +211,8 @@ class TrackerState(AuthState):
         self.plan_items = plan["items"] if plan else []
         self.evening_reflection = (plan or {}).get("evening_reflection", "")
         self.week_hours = get_week_hours(uid)
-        raw_hours = get_heatmap_hours(uid)
-        hours_by_date = {
-            datetime.strptime(k, "%Y-%m-%d").date(): v for k, v in raw_hours.items()
-        }
-        self.heatmap_html = render_heatmap_html(
-            hours_by_date,
-            streak=self.streak,
-            daily_goal=self.daily_goal,
-            display_name=self.display_name,
-        )
+        self._build_heatmap(uid)
+        self._apply_pro_config()
 
     def _apply_summary(self, summary: dict) -> None:
         self.has_plan = bool(summary.get("has_plan"))
@@ -194,7 +234,14 @@ class TrackerState(AuthState):
 
     @rx.event
     def save_daily_targets(self):
-        descriptions = [self.target_1, self.target_2, self.target_3]
+        descriptions = [
+            self.target_1,
+            self.target_2,
+            self.target_3,
+            self.target_4,
+            self.target_5,
+            self.target_6,
+        ]
         ok, msg = save_targets(self.user_id, date.today(), descriptions, self.tier)
         if not ok:
             return rx.toast.error(msg)
@@ -212,6 +259,53 @@ class TrackerState(AuthState):
     @rx.event
     def set_target_3(self, value: str) -> None:
         self.target_3 = value
+
+    @rx.event
+    def set_target_4(self, value: str) -> None:
+        self.target_4 = value
+
+    @rx.event
+    def set_target_5(self, value: str) -> None:
+        self.target_5 = value
+
+    @rx.event
+    def set_target_6(self, value: str) -> None:
+        self.target_6 = value
+
+    @rx.event
+    def set_unlock_code(self, value: str) -> None:
+        self.unlock_code = value
+
+    @rx.event
+    def unlock_pro(self):
+        ok, msg, user = unlock_with_code(self.user_id, self.unlock_code)
+        self.unlock_message = msg
+        self.unlock_success = ok
+        if ok and user:
+            self._load_user(user)
+            self.unlock_code = ""
+            self.load_dashboard()
+            return rx.toast.success(msg)
+        return rx.toast.error(msg)
+
+    @rx.event
+    def export_study_csv(self):
+        if not self.is_pro:
+            return rx.toast.error("CSV export is a Pro feature.")
+        data = export_csv_rows(self.user_id)
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["=== Study Hours ==="])
+        writer.writerow(["date", "hours", "notes"])
+        for row in data["study_hours"]:
+            writer.writerow([row["log_date"], row["hours"], row["notes"]])
+        writer.writerow([])
+        writer.writerow(["=== Activity Log ==="])
+        writer.writerow(["date", "subject", "activity"])
+        for row in data["activity_logs"]:
+            writer.writerow([row["log_date"], row["subject"], row["activity"]])
+        filename = f"study_export_{date.today().isoformat()}.csv"
+        return rx.download(data=buffer.getvalue(), filename=filename, mime_type="text/csv")
 
     @rx.event
     def set_evening_reflection(self, value: str) -> None:
@@ -248,6 +342,8 @@ class TrackerState(AuthState):
         self.today_hours = get_study_hours_for_date(uid, today)
         self.week_hours = get_week_hours(uid)
         self.recent_hours = get_recent_hours(uid)
+        self.longest_streak = get_longest_streak(uid) if self.is_pro else 0
+        self._build_heatmap(uid)
 
     @rx.event
     def log_study_hours(self):
@@ -289,17 +385,6 @@ class TrackerState(AuthState):
         self.load_logbook()
 
     @rx.event
-    def load_tests(self) -> None:
-        if not self.is_authenticated:
-            return
-        self.tests = get_scheduled_tests(self.user_id)
-        progress = get_test_progress(self.user_id)
-        self.test_progress = progress
-        self.tests_attempted = int(progress.get("attempted", 0))
-        self.tests_total = int(progress.get("total", 0))
-        self.tests_total_hours = float(progress.get("total_hours", 0))
-
-    @rx.event
     def load_garden(self) -> None:
         if not self.is_authenticated:
             return
@@ -311,6 +396,15 @@ class TrackerState(AuthState):
         self.stage_name = info["current"]["name"]
         self.stage_emoji = info["current"]["emoji"]
         self.stage_progress = info["progress"]
+        self.garden_free_capped = bool(info.get("free_capped"))
+
+    @rx.var
+    def has_payment_link(self) -> bool:
+        return bool((self.pro_payment_link or "").strip())
+
+    @rx.var
+    def max_targets(self) -> int:
+        return 6 if self.is_pro else FREE_MAX_TARGETS
 
     @rx.var
     def greeting(self) -> str:
@@ -369,6 +463,13 @@ class TrackerState(AuthState):
     @rx.event
     def set_sticker_coach(self, key: str) -> None:
         self.sticker_coach = key
+
+    @rx.event
+    def select_sticker_coach(self, key: str):
+        if not self.is_pro and key != "yoda":
+            return rx.toast.error("Unlock Pro to use this coach character.")
+        self.sticker_coach = key
+        return rx.toast.success(f"Coach set to {key}.")
 
     @rx.var
     def goal_progress_pct(self) -> int:

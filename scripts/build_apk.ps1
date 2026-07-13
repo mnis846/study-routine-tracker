@@ -1,4 +1,4 @@
-# Build CGPSC Mains Tracker Android APK with Flet (Windows/macOS/Linux).
+# Build Study Routine Tracker Android APK with Flet (Windows/macOS/Linux).
 # Prerequisites: Python 3.10+, JDK 17, Android SDK, Flutter (installed by Flet).
 
 $ErrorActionPreference = "Stop"
@@ -36,9 +36,9 @@ if (-not (Test-Path $FletExe)) {
 Write-Host "Packaging Python app and generating Flutter project..."
 & $FletExe build apk . `
     --module-name main `
-    --bundle-id com.manish.cgpsc `
-    --product "CGPSC Mains Tracker" `
-    --org com.manish.cgpsc `
+    --bundle-id com.study.routinetracker `
+    --product "Study Routine Tracker" `
+    --org com.study.routinetracker `
     --split-per-abi `
     --yes `
     --verbose

@@ -1,4 +1,4 @@
-# Pin CGPSC Tracker + Study Coach to Windows Startup (runs on login).
+# Pin Study Tracker + Study Coach to Windows Startup (runs on login).
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path $PSScriptRoot -Parent
 $Launcher = Join-Path $ProjectRoot "Start Tracker.bat"
@@ -8,13 +8,13 @@ if (-not (Test-Path $Launcher)) {
 }
 
 $Startup = [Environment]::GetFolderPath("Startup")
-$ShortcutPath = Join-Path $Startup "CGPSC Mains Tracker.lnk"
+$ShortcutPath = Join-Path $Startup "Study Routine Tracker.lnk"
 
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $Launcher
 $Shortcut.WorkingDirectory = $ProjectRoot
-$Shortcut.Description = "CGPSC Mains Tracker + Study Coach"
+$Shortcut.Description = "Study Routine Tracker + Study Coach"
 $Shortcut.Save()
 
 Write-Host "Startup shortcut installed:"

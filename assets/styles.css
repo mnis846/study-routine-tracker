@@ -1,9 +1,23 @@
-@import "tailwindcss";
-
 :root {
   --font-sans: Inter, "Segoe UI", system-ui, sans-serif;
 }
 
 body {
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* GitHub heatmap scroll on mobile */
+.gh-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+.gh-cell {
+  transition: transform 0.1s ease, outline 0.1s ease;
+}
+
+.gh-cell:not(.gh-empty):hover {
+  transform: scale(1.15);
+  z-index: 1;
+  position: relative;
 }

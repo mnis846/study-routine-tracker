@@ -10,12 +10,12 @@ if (-not (Test-Path $Launcher)) {
 
 $WshShell = New-Object -ComObject WScript.Shell
 $Desktop = [Environment]::GetFolderPath("Desktop")
-$ShortcutPath = Join-Path $Desktop "CGPSC Mains Tracker.lnk"
+$ShortcutPath = Join-Path $Desktop "Study Routine Tracker.lnk"
 
 $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
 $Shortcut.TargetPath = $Launcher
 $Shortcut.WorkingDirectory = $ProjectRoot
-$Shortcut.Description = "Launch CGPSC Mains Tracker"
+$Shortcut.Description = "Launch Study Routine Tracker"
 $Shortcut.IconLocation = "$Icon,109"
 $Shortcut.Save()
 
