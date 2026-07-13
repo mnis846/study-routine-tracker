@@ -1,4 +1,5 @@
 import contextvars
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, timedelta
@@ -6,11 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-DB_PATH = str(Path(__file__).resolve().parent / "study_routine_tracker.db")
-
-
-def get_db_path():
-    return DB_PATH
 _UNSET = object()
 DEFAULT_DAILY_GOAL_HOURS = 6.0
 LEGACY_USER_ID = 1
@@ -28,6 +24,28 @@ class AuthRequiredError(DatabaseError):
     """Raised when a data operation runs without a logged-in user."""
 
 
+def resolve_data_dir() -> Path:
+    """Writable directory for SQLite (Streamlit Cloud repo mount is read-only)."""
+    override = os.environ.get("TRACKER_DATA_DIR")
+    if override:
+        path = Path(override)
+    elif Path("/mount/src").exists() or os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud":
+        # Streamlit Community Cloud: persist under the user home, not the git mount
+        path = Path.home() / ".study_routine_tracker"
+    else:
+        path = Path(__file__).resolve().parent
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def get_db_path() -> str:
+    return str(resolve_data_dir() / "study_routine_tracker.db")
+
+
+# Back-compat alias (call get_db_path() for current path; this is set at import)
+DB_PATH = get_db_path()
+
+
 def set_current_user(user_id: int):
     _current_user_id.set(int(user_id))
 
@@ -40,11 +58,17 @@ def get_current_user_id() -> int:
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
+    path = get_db_path()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA journal_mode = WAL")
+    try:
+        conn.execute("PRAGMA journal_mode = WAL")
+    except sqlite3.Error:
+        # Some hosted filesystems do not support WAL
+        conn.execute("PRAGMA journal_mode = DELETE")
     return conn
 
 
@@ -458,7 +482,8 @@ def get_setting(key, default=None, user_id=None):
 def set_setting(key, value, user_id=None):
     uid = user_id if user_id is not None else get_current_user_id()
     with db_connection() as conn:
-        _write_setting(conn, key, uid, value)
+        # Signature: _write_setting(conn, key, value, user_id)
+        _write_setting(conn, key, value, uid)
 
 
 def get_daily_study_goal():

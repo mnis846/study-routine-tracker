@@ -437,19 +437,25 @@ except DatabaseError:
 garden_award_key = f"garden_session_awarded_{user_id}"
 if garden_award_key not in st.session_state:
     xp_before = garden_state["xp"]
-    session_rewards = process_daily_checkin(streak)
-    session_rewards += sync_daily_garden_bonuses(today)
-    show_garden_rewards(session_rewards, xp_before)
-    garden_state = get_garden_state(streak)
-    garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
+    try:
+        session_rewards = process_daily_checkin(streak)
+        session_rewards += sync_daily_garden_bonuses(today)
+        show_garden_rewards(session_rewards, xp_before)
+        garden_state = get_garden_state(streak)
+        garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
+    except DatabaseError as exc:
+        st.warning(f"Could not update garden XP right now: {exc}")
     st.session_state[garden_award_key] = True
 else:
     xp_before = garden_state["xp"]
-    milestone_rewards = sync_daily_garden_bonuses(today)
-    if milestone_rewards:
-        show_garden_rewards(milestone_rewards, xp_before)
-        garden_state = get_garden_state(streak)
-        garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
+    try:
+        milestone_rewards = sync_daily_garden_bonuses(today)
+        if milestone_rewards:
+            show_garden_rewards(milestone_rewards, xp_before)
+            garden_state = get_garden_state(streak)
+            garden_state["stage_info"] = effective_garden_stage_index(garden_state["xp"])
+    except DatabaseError as exc:
+        st.warning(f"Could not update garden XP right now: {exc}")
 
 with st.sidebar:
     render_sidebar()
