@@ -2,10 +2,11 @@
 
 | File | Purpose |
 | --- | --- |
-| `hero.jpg` | Marketing banner (already used in root `README.md`) |
-| `dashboard.png` | Daily targets + hours view |
-| `garden.png` | Study Garden XP / map |
-| `heatmap.png` | Show-up consistency grid |
-| `break-games.gif` | Optional short clip of break mini-games |
+| `hero.jpg` | Marketing banner (root README) |
+| `dashboard.png` | Daily targets tab |
+| `hours.png` | Study hours tab |
+| `logbook.png` | Logbook tab |
+| `garden.png` | Study Garden |
+| `break.png` | Break / mini-games tab |
 
-Capture from a running local instance (`streamlit run app.py` or `Start Tracker.bat`), then reference the files from the root README.
+Capture from a running local instance (`streamlit run app.py` or `Start Tracker.bat`).

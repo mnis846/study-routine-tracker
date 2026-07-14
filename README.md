@@ -34,30 +34,13 @@ Built for personal use, demos, and pitching a productized exam-prep toolkit.
 
 ## Screenshots
 
-Hero banner is included above. **App screenshots** (dashboard, garden, heatmap) go here after you capture them once locally.
-
-**How to add them (2 minutes):**
-
-1. Run the app (`Start Tracker.bat` or `streamlit run app.py`).
-2. Capture 3 windows (or record a short GIF of break games).
-3. Save into `docs/screenshots/` using the names below, then wire them into this section:
-
-```text
-docs/screenshots/
-  hero.jpg          # included
-  dashboard.png     # daily targets + hours
-  garden.png        # Study Garden XP path
-  heatmap.png       # GitHub-style consistency grid
-  break-games.gif   # optional mini-games GIF
-```
-
-Example markdown once files exist:
-
-```markdown
-| Dashboard | Garden | Heatmap |
+| Targets | Hours | Logbook |
 | --- | --- | --- |
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Garden](docs/screenshots/garden.png) | ![Heatmap](docs/screenshots/heatmap.png) |
-```
+| ![Targets](docs/screenshots/dashboard.png) | ![Hours](docs/screenshots/hours.png) | ![Logbook](docs/screenshots/logbook.png) |
+
+| Garden | Break |
+| --- | --- |
+| ![Garden](docs/screenshots/garden.png) | ![Break](docs/screenshots/break.png) |
 
 ---
 
