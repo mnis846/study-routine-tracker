@@ -4,7 +4,7 @@ The Streamlit app uses a single local SQLite profile instead of login/signup.
 See database.ensure_local_user() and database.get_db_path().
 """
 
-from database import ensure_local_user, get_local_display_name
+from tracker.database import ensure_local_user, get_local_display_name
 
 
 def render_auth_gate():

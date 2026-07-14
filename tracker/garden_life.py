@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from database import (
+from tracker.database import (
     get_daily_study_goal,
     get_setting,
     get_study_hours_for_date,

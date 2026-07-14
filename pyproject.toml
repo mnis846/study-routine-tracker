@@ -1,25 +1,28 @@
 [project]
-name = "cgpsc-mains-tracker"
+name = "study-routine-tracker"
 version = "1.0.0"
-description = "Manish's CGPSC Mains Tracker — Android"
-readme = false
+description = "Gamified local-first study routine tracker for competitive exam aspirants"
+readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 dependencies = [
-    "flet>=0.27.0",
+    "streamlit>=1.35.0,<2",
     "pandas>=2.0.0,<3",
+    "plotly>=5.18.0,<6",
+    "python-chess>=1.999,<2",
+    "PyYAML>=6.0",
+    "pystray>=0.19.0,<1",
+    "Pillow>=10.0.0,<12",
+    "plyer>=2.1.0,<3",
 ]
 
-[tool.flet]
-app.module = "main"
-app.path = "."
-org = "com.manish.cgpsc"
-product = "CGPSC Mains Tracker"
-company = "Manish Tandan"
-copyright = "Copyright (c) 2026 Manish Tandan"
+[project.optional-dependencies]
+mobile = [
+    "flet>=0.27.0",
+]
+reflex = [
+    # see requirements-reflex.txt for the full Reflex stack
+]
 
-[tool.flet.android]
-split_per_abi = true
-min_sdk_version = 24
-
-[tool.flet.android.manifest_application]
-usesCleartextTraffic = "false"
+[tool.setuptools.packages.find]
+include = ["tracker*", "study_tracker*"]

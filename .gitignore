@@ -17,6 +17,8 @@ env/
 *.db-journal
 *.db-wal
 *.db-shm
+data/
+logs/
 .env
 .streamlit/secrets.toml
 tracker-launch.log

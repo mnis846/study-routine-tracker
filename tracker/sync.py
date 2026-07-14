@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from database import DatabaseError, get_db_path
+from tracker.database import DatabaseError, get_db_path
 
 SYNC_FILE_PREFIX = "study_routine_tracker_sync"
 

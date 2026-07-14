@@ -12,9 +12,11 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from database import DatabaseError, get_db_path
+from tracker.database import DatabaseError, get_db_path
 
-REPO_ROOT = Path(__file__).resolve().parent
+from tracker.paths import PROJECT_ROOT
+
+REPO_ROOT = PROJECT_ROOT
 EXPORT_DIR = REPO_ROOT / "data"
 LOG_DIR = REPO_ROOT / "logs"
 STATE_FILE = LOG_DIR / "git-sync-state.json"

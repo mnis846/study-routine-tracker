@@ -1,11 +1,13 @@
 import contextvars
-import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
+
+from tracker.paths import get_db_path as _db_path
+from tracker.paths import resolve_data_dir  # re-exported for callers
 
 _UNSET = object()
 DEFAULT_DAILY_GOAL_HOURS = 6.0
@@ -27,22 +29,12 @@ class AuthRequiredError(DatabaseError):
     """Raised when a data operation runs without a local profile context."""
 
 
-def resolve_data_dir() -> Path:
-    """Writable directory for SQLite (Streamlit Cloud repo mount is read-only)."""
-    override = os.environ.get("TRACKER_DATA_DIR")
-    if override:
-        path = Path(override)
-    elif Path("/mount/src").exists() or os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud":
-        # Streamlit Community Cloud: persist under the user home, not the git mount
-        path = Path.home() / ".study_routine_tracker"
-    else:
-        path = Path(__file__).resolve().parent
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+# Keep resolve_data_dir available as database.resolve_data_dir
+__all_data_helpers__ = ("resolve_data_dir",)
 
 
 def get_db_path() -> str:
-    return str(resolve_data_dir() / "study_routine_tracker.db")
+    return str(_db_path())
 
 
 # Back-compat alias (call get_db_path() for current path; this is set at import)
@@ -1171,7 +1163,7 @@ def get_export_dataframes():
             conn,
             params=(uid,),
         )
-    from logbook import get_activity_logs_export
+    from tracker.logbook import get_activity_logs_export
 
     activity_logs = get_activity_logs_export()
     return {
@@ -1451,7 +1443,7 @@ def process_daily_checkin(streak=0):
     if _bonus_already_today("last_garden_checkin"):
         return rewards
 
-    from garden import XP_REWARDS
+    from tracker.garden import XP_REWARDS
 
     xp = add_garden_xp(
         XP_REWARDS["daily_checkin"],
@@ -1474,7 +1466,7 @@ def process_daily_checkin(streak=0):
 
 
 def award_hours_garden_xp(hours):
-    from garden import XP_REWARDS
+    from tracker.garden import XP_REWARDS
 
     amount = int(float(hours) * XP_REWARDS["per_hour"])
     if amount <= 0:
@@ -1484,7 +1476,7 @@ def award_hours_garden_xp(hours):
 
 
 def award_target_done_xp():
-    from garden import XP_REWARDS
+    from tracker.garden import XP_REWARDS
 
     xp = add_garden_xp(XP_REWARDS["target_done"], "target", "Target completed!")
     return {"xp": xp, "message": "Target crushed ✅"}
@@ -1495,7 +1487,7 @@ def sync_daily_garden_bonuses(today=None):
     if today is None:
         today = date.today()
 
-    from garden import XP_REWARDS
+    from tracker.garden import XP_REWARDS
 
     rewards = []
     summary = get_daily_plan_summary(today)
@@ -1529,8 +1521,8 @@ def sync_daily_garden_bonuses(today=None):
 
 
 def get_garden_state(streak=0, today=None):
-    from garden import get_stage_info
-    from garden_life import sync_garden_life
+    from tracker.garden import get_stage_info
+    from tracker.garden_life import sync_garden_life
 
     if today is None:
         today = date.today()

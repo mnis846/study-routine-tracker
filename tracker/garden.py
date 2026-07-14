@@ -1,6 +1,6 @@
 """Study Garden — year-long jungle map that grows with your prep."""
 
-from profile import EXAM, FIRST_NAME
+from tracker.profile import EXAM, FIRST_NAME
 
 GARDEN_STAGES = [
     {"name": "Barren Plot", "min_xp": 0, "emoji": "🏚️", "sky": "#5c5348", "ground": "#3a3228", "biome": "wasteland"},
@@ -190,6 +190,6 @@ GARDEN_CSS = """
 
 def render_interactive_garden(garden_state, height=760, **_kwargs):
     """Cinematic study jungle — full-width draggable map from garden_map."""
-    from garden_map import render_garden_world
+    from tracker.garden_map import render_garden_world
 
     render_garden_world(garden_state, height=height)

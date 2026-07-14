@@ -2,7 +2,7 @@
 
 import random
 
-from profile import EXAM, FIRST_NAME
+from tracker.profile import EXAM, FIRST_NAME
 
 COACHES = {
     "yoda": {

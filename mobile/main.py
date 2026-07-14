@@ -10,7 +10,7 @@ import flet as ft
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from database import (  # noqa: E402
+from tracker.database import (  # noqa: E402
     DatabaseError,
     add_daily_study_hours,
     award_hours_garden_xp,
@@ -32,19 +32,19 @@ from database import (  # noqa: E402
     sync_daily_garden_bonuses,
     update_target_status,
 )
-from logbook import (  # noqa: E402
+from tracker.logbook import (  # noqa: E402
     add_activity_log,
     delete_activity_log,
     get_activity_log_stats,
     get_activity_logs,
 )
-from sync import (  # noqa: E402
+from tracker.sync import (  # noqa: E402
     default_sync_filename,
     export_database,
     get_sync_metadata,
 )
-from garden import GARDEN_STAGES, XP_REWARDS, get_stage_info  # noqa: E402
-from profile import EXAM, EXAM_YEAR, FIRST_NAME, FULL_NAME, MOTTO, greeting, period_nudge, possessive  # noqa: E402
+from tracker.garden import GARDEN_STAGES, XP_REWARDS, get_stage_info  # noqa: E402
+from tracker.profile import EXAM, EXAM_YEAR, FIRST_NAME, FULL_NAME, MOTTO, greeting, period_nudge, possessive  # noqa: E402
 
 PRIMARY = "#48BB78"
 PRIMARY_DARK = "#2F855A"

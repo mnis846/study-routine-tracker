@@ -202,16 +202,16 @@ The sidebar shows the active database path.
 ## Project layout (high level)
 
 ```
-app.py                 # Main Streamlit app
-database.py            # Local SQLite + study data API
-garden*.py             # Study Garden XP + map
-desktop_companion.py   # Windows sticker companion
+app.py                 # Streamlit entry (thin)
+tracker/               # App package (UI, database, garden, …)
 study_tracker/         # Optional Reflex multipage app
-assets/                # Stickers, games, styles
-docs/screenshots/      # README images
-scripts/ · launchers/  # Desktop helpers
-LICENSE                # MIT
+assets/ · games/       # Stickers, CSS, break games
+docs/                  # Screenshots + STRUCTURE.md
+tests/                 # Persistence smoke tests
+scripts/ · launchers/  # Windows helpers
 ```
+
+Full tree: [docs/STRUCTURE.md](docs/STRUCTURE.md)
 
 ---
 

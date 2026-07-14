@@ -3,14 +3,13 @@
 import io
 import json
 import urllib.request
-from pathlib import Path
 
 import chess
 import chess.pgn
 
-from break_games_config import BREAK_GAMES, GAME_GROUPS
+from tracker.break_games_config import BREAK_GAMES, GAME_GROUPS
+from tracker.paths import GAMES_DIR
 
-GAMES_DIR = Path(__file__).resolve().parent / "games"
 _PUZZLE_TEMPLATE = GAMES_DIR / "lichess_puzzle.html"
 
 __all__ = ["BREAK_GAMES", "GAME_GROUPS", "embed_game", "render_break_game"]

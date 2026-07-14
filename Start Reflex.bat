@@ -1,3 +1,2 @@
 @echo off
-cd /d "%~dp0"
-python -m reflex run
+call "%~dp0launchers\Start_Reflex.bat"

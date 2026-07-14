@@ -4,8 +4,8 @@ import json
 
 import streamlit.components.v1 as components
 
-from garden_life import MAX_GROVE_TREES, FOUNDATION_TREE_TARGET
-from profile import FIRST_NAME
+from tracker.garden_life import MAX_GROVE_TREES, FOUNDATION_TREE_TARGET
+from tracker.profile import FIRST_NAME
 
 
 def render_garden_world(garden_state, height=780):

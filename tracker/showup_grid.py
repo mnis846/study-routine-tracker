@@ -21,7 +21,7 @@ WEEKS_TO_SHOW = 53
 
 
 def load_showup_hours(start_date: date, end_date: date | None = None) -> dict[date, float]:
-    from database import db_connection, get_current_user_id
+    from tracker.database import db_connection, get_current_user_id
 
     uid = get_current_user_id()
     if end_date is None:

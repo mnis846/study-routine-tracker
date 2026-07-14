@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from database import get_daily_study_goal, get_setting, get_study_hours_for_date, set_setting
+from tracker.database import get_daily_study_goal, get_setting, get_study_hours_for_date, set_setting
 
 VITALITY_KEY = "garden_vitality"
 MOOD_KEY = "garden_mood"

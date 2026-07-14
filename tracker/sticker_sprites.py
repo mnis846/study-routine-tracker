@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-ASSETS_DIR = ROOT / "assets" / "stickers"
+from tracker.paths import PROJECT_ROOT, STICKERS_DIR
+
+ROOT = PROJECT_ROOT
+ASSETS_DIR = STICKERS_DIR
 PIXEL = 3
 DISPLAY_SCALE = 12  # matches generate_sticker_assets EXPORT_SCALE
 

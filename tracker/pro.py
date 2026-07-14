@@ -4,8 +4,8 @@ from datetime import datetime
 
 import streamlit as st
 
-from database import get_setting, set_setting
-from garden import GARDEN_STAGES
+from tracker.database import get_setting, set_setting
+from tracker.garden import GARDEN_STAGES
 
 FREE_MAX_TARGETS = 3
 FREE_GARDEN_MAX_STAGE = 3  # stages 0–3 free; higher stages require Pro
@@ -65,7 +65,7 @@ def free_target_cap_reached(count):
 
 def effective_garden_stage_index(xp):
     """Cap visible garden stage for free users; XP still accumulates."""
-    from garden import get_stage_info
+    from tracker.garden import get_stage_info
 
     info = get_stage_info(xp)
     if is_pro():

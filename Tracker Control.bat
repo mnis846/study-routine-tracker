@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0launchers\control.bat"
+call "%~dp0launchers\Tracker_Control.bat"
