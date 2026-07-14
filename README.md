@@ -2,10 +2,14 @@
 
 ### Build unbreakable habits. Show up daily. Grow your Study Garden.
 
-A gamified, **local-first** study planner for CGPSC and any competitive exam or academic goal. Set daily targets, log hours, keep a subject logbook, grow your garden with XP, and protect your streak with a GitHub-style heatmap — no account required.
+A gamified **Streamlit** study planner for CGPSC and any competitive exam or academic goal.  
+Set daily targets, log hours, keep a subject logbook, grow your garden with XP, and protect your streak with a GitHub-style heatmap — **no account required**.
+
+> **Recommended for most users:** the **Streamlit app** (`streamlit run app.py` / `Start Tracker.bat`).  
+> Runs in your browser, saves progress on your PC, and is the easiest way to keep streaks & garden growth continuous.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B)](https://streamlit.io/)
+[![Streamlit](https://img.shields.io/badge/App-Streamlit-FF4B4B)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-mnis846%2Fstudy--routine--tracker-181717?logo=github)](https://github.com/mnis846/study-routine-tracker)
 
@@ -14,7 +18,7 @@ A gamified, **local-first** study planner for CGPSC and any competitive exam or 
 </p>
 
 <p align="center">
-  <a href="#-one-click-setup"><strong>One-click setup</strong></a> ·
+  <a href="#streamlit-app-for-most-users"><strong>Start with Streamlit</strong></a> ·
   <a href="#-features-free-vs-pro"><strong>Free vs Pro</strong></a> ·
   <a href="#-live-demo"><strong>Live demo</strong></a> ·
   <a href="#-license"><strong>MIT License</strong></a>
@@ -28,7 +32,7 @@ Most aspirants fail from **inconsistency**, not lack of resources. This app turn
 
 **Plan → Log → Grow → Show up again tomorrow.**
 
-Built for personal use, demos, and pitching a productized exam-prep toolkit.
+Built for personal use, demos, and sharing with fellow aspirants.
 
 ---
 
@@ -44,31 +48,43 @@ Built for personal use, demos, and pitching a productized exam-prep toolkit.
 
 ---
 
-## Live demo
+## Streamlit app (for most users)
 
-> **Deploy once, paste the URL below.** Until then, run locally in under a minute.
+This project’s **main product is the Streamlit web app**. One browser window, full features, local saves.
 
-| Status | Link |
-| --- | --- |
-| **Live demo** | _Coming soon_ — Streamlit Community Cloud recommended |
-| **Source** | https://github.com/mnis846/study-routine-tracker |
+| How you run it | Best for | Streaks / garden / logbook |
+| --- | --- | --- |
+| **On your PC** (`streamlit run app.py` or `Start Tracker.bat`) | Daily habit tracking | **Yes — saved in a local SQLite file** and continues after restart |
+| **Streamlit Community Cloud** (public demo URL) | Sharing / try-before-install | Temporary — can reset when the app sleeps or redeploys |
 
-### Deploy on Streamlit Community Cloud (free)
-
-1. Open [share.streamlit.io](https://share.streamlit.io/) and connect this GitHub repo.
-2. Set **Main file path** to `app.py`.
-3. Deploy → copy the public URL (e.g. `https://YOUR-APP.streamlit.app`).
-4. Paste that URL into the **Live demo** row above (and optionally set GitHub repo **Homepage**).
-
-Optional secrets for Pro unlock codes: see `.streamlit/secrets.toml.example` (or app Settings).
-
-> **Note:** Cloud storage is ephemeral between sleep/redeploy. For lasting history, run locally or export backups from the app (Pro).
+**For continuous streaks and garden XP, run Streamlit on your own computer.**  
+Sidebar shows *Saving works on this device* and offers **Download full backup (.db)**.
 
 ---
 
-## One-click setup
+## Live demo
 
-### Windows (recommended)
+| Status | Link |
+| --- | --- |
+| **Live demo** | _Deploy once on Streamlit Cloud, then paste the URL here_ |
+| **Source** | https://github.com/mnis846/study-routine-tracker |
+
+### Deploy on Streamlit Community Cloud (free try-out)
+
+1. Open [share.streamlit.io](https://share.streamlit.io/) → sign in with GitHub.
+2. **New app** → this repo → branch **`main`**.
+3. **Main file path:** `app.py` · Python version 3.11+ if asked.
+4. Deploy → share the `*.streamlit.app` link with friends.
+
+Optional secrets (Pro codes): `.streamlit/secrets.toml.example` → Cloud **Secrets**.
+
+> Cloud is great for demos. For **your** multi-month prep streak, use the local Streamlit install below.
+
+---
+
+## One-click setup (local Streamlit)
+
+### Windows (easiest)
 
 1. **Clone** (or download ZIP and extract):
 
@@ -85,15 +101,15 @@ Optional secrets for Pro unlock codes: see `.streamlit/secrets.toml.example` (or
    pip install -r requirements.txt
    ```
 
-3. **Launch** — double-click:
+3. **Launch Streamlit** — double-click:
 
    | File | What it does |
    | --- | --- |
-   | **`Start Tracker.bat`** | Starts the web app (+ optional desktop study coach) |
+   | **`Start Tracker.bat`** | Starts Streamlit (+ optional desktop study coach) |
    | **`Tracker Control.bat`** | Start / stop / status helpers |
    | **`Stop Sticker.bat`** | Stops the desktop companion only |
 
-Browser opens at the URL Streamlit prints (usually **http://localhost:8501**). **No signup.**
+Browser opens at **http://localhost:8501**. **No signup.** Progress saves automatically.
 
 ### Cross-platform (any OS)
 
@@ -110,11 +126,13 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-### Optional: desktop study coach (Windows)
+### Optional: desktop study coach (Windows only)
 
 ```bash
 python desktop_companion.py
 ```
+
+Pairs with the Streamlit app for quick hour logs from the tray sticker.
 
 ---
 
@@ -154,21 +172,21 @@ Unlock flow: pay (Razorpay link when configured) → enter unlock code in **Sett
 
 ---
 
-## Data storage
+## Data storage (continuity)
 
-| Environment | Database location |
-| --- | --- |
-| Desktop (default) | `study_routine_tracker.db` next to the app |
-| Custom path | Set env `TRACKER_DATA_DIR` |
-| Streamlit Cloud | `~/.study_routine_tracker/study_routine_tracker.db` |
+| Environment | Database location | Keeps long streaks? |
+| --- | --- | --- |
+| **Local Streamlit (recommended)** | `study_routine_tracker.db` in the project folder | **Yes** — same folder every day |
+| Custom path | Env `TRACKER_DATA_DIR` | Yes, if you keep that folder |
+| Streamlit Cloud | Under the host home dir | **No guarantee** after sleep/redeploy |
 
-The sidebar shows the active database path.
+The sidebar shows the active database path and a free **full backup** download.
 
 ---
 
 ## Tech stack
 
-- **Python + Streamlit** — UI  
+- **Streamlit** — main app (browser UI)  
 - **SQLite** — local persistence  
 - **Pandas + Plotly** — analytics  
 
