@@ -68,6 +68,8 @@ def get_conn():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 30000")
+    # Balance durability vs speed for a single-user local app
+    conn.execute("PRAGMA synchronous = NORMAL")
     try:
         conn.execute("PRAGMA journal_mode = WAL")
     except sqlite3.Error:
@@ -98,12 +100,17 @@ def _write_setting(conn, key, value, user_id):
 
 
 @contextmanager
-def db_connection(*, commit=True):
+def db_connection(*, commit=True, checkpoint=False):
     conn = get_conn()
     try:
         yield conn
         if commit:
             conn.commit()
+            if checkpoint:
+                try:
+                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                except sqlite3.Error:
+                    pass
     except sqlite3.Error as exc:
         conn.rollback()
         raise DatabaseError(str(exc)) from exc
@@ -364,7 +371,7 @@ def _migrate_legacy_schema(conn):
 
 
 def init_db():
-    with db_connection() as conn:
+    with db_connection(checkpoint=True) as conn:
         _create_users_table(conn)
         if conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='daily_plans'"
@@ -377,24 +384,268 @@ def init_db():
         ).fetchone():
             _ensure_scheduled_tests_max_score(conn)
     # Single-device mode: always attach the local profile after schema is ready
-    ensure_local_user()
+    user_id = ensure_local_user()
+    verify_database_writable()
+    return user_id
+
+
+def _pick_primary_user_id(conn) -> int | None:
+    """Choose the profile that should own all local data."""
+    local = conn.execute(
+        "SELECT id FROM users WHERE username = ?",
+        (LOCAL_USERNAME,),
+    ).fetchone()
+    if local:
+        return int(local["id"])
+
+    legacy = conn.execute(
+        "SELECT id FROM users WHERE username = 'legacy' OR id = ?",
+        (LEGACY_USER_ID,),
+    ).fetchone()
+    if legacy:
+        return int(legacy["id"])
+
+    any_user = conn.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1").fetchone()
+    if any_user:
+        return int(any_user["id"])
+    return None
+
+
+def _table_exists(conn, table: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
+        (table,),
+    ).fetchone()
+    return row is not None
+
+
+def _merge_settings(conn, donor_id: int, primary_id: int):
+    """Copy donor settings into primary when primary is missing that key."""
+    rows = conn.execute(
+        "SELECT key, value FROM app_settings WHERE user_id = ?",
+        (donor_id,),
+    ).fetchall()
+    for row in rows:
+        existing = conn.execute(
+            "SELECT 1 FROM app_settings WHERE user_id = ? AND key = ?",
+            (primary_id, row["key"]),
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO app_settings (user_id, key, value) VALUES (?, ?, ?)",
+                (primary_id, row["key"], row["value"]),
+            )
+    conn.execute("DELETE FROM app_settings WHERE user_id = ?", (donor_id,))
+
+
+def _merge_study_hours(conn, donor_id: int, primary_id: int):
+    rows = conn.execute(
+        """SELECT id, log_date, hours, notes FROM daily_study_hours
+           WHERE user_id = ?""",
+        (donor_id,),
+    ).fetchall()
+    for row in rows:
+        primary = conn.execute(
+            """SELECT id, hours, notes FROM daily_study_hours
+               WHERE user_id = ? AND log_date = ?""",
+            (primary_id, row["log_date"]),
+        ).fetchone()
+        if primary:
+            merged_hours = float(primary["hours"] or 0) + float(row["hours"] or 0)
+            old_notes = (primary["notes"] or "").strip()
+            new_notes = (row["notes"] or "").strip()
+            if new_notes and old_notes and new_notes not in old_notes:
+                notes = f"{old_notes}; {new_notes}"
+            else:
+                notes = old_notes or new_notes
+            conn.execute(
+                """UPDATE daily_study_hours
+                   SET hours = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (merged_hours, notes, primary["id"]),
+            )
+            conn.execute("DELETE FROM daily_study_hours WHERE id = ?", (row["id"],))
+        else:
+            conn.execute(
+                "UPDATE daily_study_hours SET user_id = ? WHERE id = ?",
+                (primary_id, row["id"]),
+            )
+
+
+def _merge_daily_plans(conn, donor_id: int, primary_id: int):
+    donor_plans = conn.execute(
+        "SELECT * FROM daily_plans WHERE user_id = ?",
+        (donor_id,),
+    ).fetchall()
+    for plan in donor_plans:
+        primary = conn.execute(
+            "SELECT id, evening_reflection FROM daily_plans WHERE user_id = ? AND plan_date = ?",
+            (primary_id, plan["plan_date"]),
+        ).fetchone()
+        if not primary:
+            conn.execute(
+                "UPDATE daily_plans SET user_id = ? WHERE id = ?",
+                (primary_id, plan["id"]),
+            )
+            continue
+
+        # Keep primary plan; move unique target items across; merge reflection
+        primary_id_plan = int(primary["id"])
+        donor_plan_id = int(plan["id"])
+        if not (primary["evening_reflection"] or "").strip() and (
+            plan["evening_reflection"] or ""
+        ).strip():
+            conn.execute(
+                "UPDATE daily_plans SET evening_reflection = ? WHERE id = ?",
+                (plan["evening_reflection"], primary_id_plan),
+            )
+
+        max_order = conn.execute(
+            "SELECT COALESCE(MAX(order_index), -1) FROM daily_target_items WHERE plan_id = ?",
+            (primary_id_plan,),
+        ).fetchone()[0]
+        existing_descs = {
+            (r[0] or "").strip().lower()
+            for r in conn.execute(
+                "SELECT description FROM daily_target_items WHERE plan_id = ?",
+                (primary_id_plan,),
+            ).fetchall()
+        }
+        donor_items = conn.execute(
+            """SELECT description, planned_hours, status, actual_hours, completion_notes
+               FROM daily_target_items WHERE plan_id = ?
+               ORDER BY order_index, id""",
+            (donor_plan_id,),
+        ).fetchall()
+        next_index = int(max_order) + 1
+        for item in donor_items:
+            desc = (item["description"] or "").strip()
+            if not desc or desc.lower() in existing_descs:
+                continue
+            conn.execute(
+                """INSERT INTO daily_target_items
+                   (plan_id, description, planned_hours, order_index, status,
+                    actual_hours, completion_notes)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    primary_id_plan,
+                    desc,
+                    float(item["planned_hours"] or 0),
+                    next_index,
+                    item["status"] or "Pending",
+                    float(item["actual_hours"] or 0),
+                    item["completion_notes"] or "",
+                ),
+            )
+            existing_descs.add(desc.lower())
+            next_index += 1
+        conn.execute("DELETE FROM daily_target_items WHERE plan_id = ?", (donor_plan_id,))
+        conn.execute("DELETE FROM daily_plans WHERE id = ?", (donor_plan_id,))
+
+
+def _reassign_user_rows(conn, table: str, donor_id: int, primary_id: int):
+    if not _table_exists(conn, table):
+        return
+    if not _table_has_column(conn, table, "user_id"):
+        return
+    conn.execute(
+        f"UPDATE {table} SET user_id = ? WHERE user_id = ?",
+        (primary_id, donor_id),
+    )
+
+
+def _merge_scheduled_tests(conn, donor_id: int, primary_id: int):
+    if not _table_exists(conn, "scheduled_tests"):
+        return
+    rows = conn.execute(
+        "SELECT * FROM scheduled_tests WHERE user_id = ?",
+        (donor_id,),
+    ).fetchall()
+    for row in rows:
+        conflict = conn.execute(
+            "SELECT id FROM scheduled_tests WHERE user_id = ? AND test_no = ?",
+            (primary_id, row["test_no"]),
+        ).fetchone()
+        if conflict:
+            # Prefer attempted / scored donor row when primary is empty
+            primary = conn.execute(
+                "SELECT * FROM scheduled_tests WHERE id = ?",
+                (conflict["id"],),
+            ).fetchone()
+            donor_status = (row["status"] or "").strip()
+            primary_status = (primary["status"] or "").strip()
+            if donor_status == "Attempted" and primary_status != "Attempted":
+                cols = [
+                    c
+                    for c in row.keys()
+                    if c not in {"id", "user_id", "test_no", "created_at"}
+                ]
+                sets = ", ".join(f"{c} = ?" for c in cols)
+                params = [row[c] for c in cols] + [conflict["id"]]
+                conn.execute(
+                    f"UPDATE scheduled_tests SET {sets} WHERE id = ?",
+                    params,
+                )
+            conn.execute("DELETE FROM scheduled_tests WHERE id = ?", (row["id"],))
+        else:
+            conn.execute(
+                "UPDATE scheduled_tests SET user_id = ? WHERE id = ?",
+                (primary_id, row["id"]),
+            )
+
+
+def consolidate_profiles_into(primary_id: int) -> list[int]:
+    """
+    Merge every other user profile into primary_id (single-device mode).
+
+    Prevents the silent data split where a new `local` user is created while
+    garden XP / history remains on a `legacy` profile.
+    """
+    merged: list[int] = []
+    with db_connection(checkpoint=True) as conn:
+        donors = [
+            int(r[0])
+            for r in conn.execute(
+                "SELECT id FROM users WHERE id != ? ORDER BY id",
+                (primary_id,),
+            ).fetchall()
+        ]
+        for donor_id in donors:
+            if _table_exists(conn, "app_settings"):
+                _merge_settings(conn, donor_id, primary_id)
+            if _table_exists(conn, "daily_study_hours"):
+                _merge_study_hours(conn, donor_id, primary_id)
+            if _table_exists(conn, "daily_plans"):
+                _merge_daily_plans(conn, donor_id, primary_id)
+            if _table_exists(conn, "garden_events"):
+                _reassign_user_rows(conn, "garden_events", donor_id, primary_id)
+            if _table_exists(conn, "study_activity_logs"):
+                _reassign_user_rows(conn, "study_activity_logs", donor_id, primary_id)
+            _merge_scheduled_tests(conn, donor_id, primary_id)
+            conn.execute("DELETE FROM users WHERE id = ?", (donor_id,))
+            merged.append(donor_id)
+
+        # Normalize primary as the local profile identity
+        conn.execute(
+            """UPDATE users
+               SET username = ?, email = COALESCE(NULLIF(email, ''), ?)
+               WHERE id = ?""",
+            (LOCAL_USERNAME, LOCAL_EMAIL, primary_id),
+        )
+    return merged
 
 
 def ensure_local_user() -> int:
     """
-    Ensure a single local profile exists and is set as the current user.
+    Ensure a single local profile owns all study data on this device.
 
-    Auth is disabled for now — all study data is saved to the local SQLite file
-    under this profile (see get_db_path()).
+    Auth is disabled — data is saved under one profile in the local SQLite file
+    (see get_db_path()). Older DBs may only have a `legacy` user; we adopt it
+    instead of creating an empty second profile.
     """
     with db_connection() as conn:
-        row = conn.execute(
-            "SELECT id, first_name FROM users WHERE username = ?",
-            (LOCAL_USERNAME,),
-        ).fetchone()
-        if row:
-            user_id = int(row["id"])
-        else:
+        user_id = _pick_primary_user_id(conn)
+        if user_id is None:
             conn.execute(
                 """INSERT INTO users
                    (username, email, first_name, last_name, password_hash)
@@ -413,9 +664,103 @@ def ensure_local_user() -> int:
                     (LOCAL_USERNAME,),
                 ).fetchone()[0]
             )
+        else:
+            # Rename adopted profile to local when needed (legacy → local)
+            conn.execute(
+                """UPDATE users
+                   SET username = ?, email = COALESCE(NULLIF(email, ''), ?)
+                   WHERE id = ?""",
+                (LOCAL_USERNAME, LOCAL_EMAIL, user_id),
+            )
+            # Soften leftover migration names for the UI
+            row = conn.execute(
+                "SELECT first_name FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if row and (row["first_name"] or "").strip().lower() in {
+                "legacy",
+                "user",
+                "legacy user",
+            }:
+                conn.execute(
+                    "UPDATE users SET first_name = ? WHERE id = ?",
+                    (LOCAL_DISPLAY_NAME, user_id),
+                )
+
+    # Merge any extra profiles created by older builds
+    consolidate_profiles_into(user_id)
     provision_new_user(user_id)
     set_current_user(user_id)
     return user_id
+
+
+def verify_database_writable() -> str:
+    """
+    Confirm the SQLite file can be read and written.
+
+    Returns the absolute database path. Raises DatabaseError on failure.
+    """
+    path = Path(get_db_path())
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with db_connection(checkpoint=True) as conn:
+            ok = conn.execute("PRAGMA integrity_check").fetchone()[0]
+            if ok != "ok":
+                raise DatabaseError(f"Database integrity check failed: {ok}")
+            # Round-trip write/delete on a disposable key under current user
+            uid = get_current_user_id()
+            probe_key = "__write_probe__"
+            _write_setting(conn, probe_key, "1", uid)
+            conn.execute(
+                "DELETE FROM app_settings WHERE user_id = ? AND key = ?",
+                (uid, probe_key),
+            )
+        if not path.exists():
+            raise DatabaseError(f"Database file was not created at {path}")
+        return str(path.resolve())
+    except OSError as exc:
+        raise DatabaseError(f"Cannot write database at {path}: {exc}") from exc
+
+
+def get_data_status() -> dict:
+    """Summary of local persistence for the UI."""
+    path = Path(get_db_path())
+    size = path.stat().st_size if path.exists() else 0
+    uid = get_current_user_id()
+    with db_connection(commit=False) as conn:
+        hours_days = conn.execute(
+            "SELECT COUNT(*) FROM daily_study_hours WHERE user_id = ?",
+            (uid,),
+        ).fetchone()[0]
+        plan_days = conn.execute(
+            "SELECT COUNT(*) FROM daily_plans WHERE user_id = ?",
+            (uid,),
+        ).fetchone()[0]
+        user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+    return {
+        "path": str(path.resolve()),
+        "exists": path.exists(),
+        "size_bytes": size,
+        "user_id": uid,
+        "user_count": user_count,
+        "hours_days": int(hours_days),
+        "plan_days": int(plan_days),
+        "garden_xp": get_garden_xp(),
+        "integrity": integrity,
+        "ok": integrity == "ok" and path.exists(),
+    }
+
+
+def read_database_backup_bytes() -> bytes:
+    """Return a consistent snapshot of the SQLite file for download/backup."""
+    src = Path(get_db_path())
+    if not src.exists():
+        raise DatabaseError("Database file does not exist yet.")
+    # Checkpoint WAL so the main file contains latest pages
+    with db_connection(checkpoint=True) as conn:
+        conn.execute("SELECT 1")
+    return src.read_bytes()
 
 
 def get_local_display_name() -> str:

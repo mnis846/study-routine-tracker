@@ -14,6 +14,7 @@ from database import (
     get_daily_plan,
     get_daily_plan_summary,
     get_daily_study_goal,
+    get_data_status,
     get_db_path,
     get_export_dataframes,
     get_garden_state,
@@ -26,6 +27,7 @@ from database import (
     get_week_study_hours,
     init_db,
     process_daily_checkin,
+    read_database_backup_bytes,
     save_daily_targets,
     save_evening_reflection,
     set_daily_study_goal,
@@ -124,10 +126,25 @@ try:
     init_db()  # creates local SQLite profile; no login required
 except DatabaseError as exc:
     st.error(f"Could not initialize the database: {exc}")
+    st.info(
+        "Check that this folder is writable, or set environment variable "
+        "`TRACKER_DATA_DIR` to a folder you can write to."
+    )
     st.stop()
 
 first_name = display_first_name()
 user_id = "local"
+
+# One-time welcome for empty profiles
+if "welcome_seen" not in st.session_state:
+    st.session_state.welcome_seen = True
+    try:
+        _status = get_data_status()
+        st.session_state.show_welcome = (
+            _status["hours_days"] == 0 and _status["plan_days"] == 0
+        )
+    except DatabaseError:
+        st.session_state.show_welcome = False
 
 MORNING_END_HOUR = 12
 EVENING_START_HOUR = 17
@@ -144,6 +161,36 @@ def run_db(action, error_message="Something went wrong. Please try again."):
     except DatabaseError as exc:
         st.error(f"{error_message} ({exc})")
         return None
+
+
+def flash(message, *, level="success", toast=None, toast_icon="💾"):
+    """Show a message after the next rerun (Streamlit clears pre-rerun banners)."""
+    st.session_state["flash_message"] = {"text": message, "level": level}
+    if toast:
+        st.session_state.setdefault("pending_ui_toasts", []).append(
+            {"text": toast, "icon": toast_icon}
+        )
+
+
+def show_flash():
+    payload = st.session_state.pop("flash_message", None)
+    if not payload:
+        return
+    text = payload.get("text", "")
+    level = payload.get("level", "success")
+    if level == "error":
+        st.error(text)
+    elif level == "warning":
+        st.warning(text)
+    elif level == "info":
+        st.info(text)
+    else:
+        st.success(text)
+
+
+def flush_pending_ui_toasts():
+    for item in st.session_state.pop("pending_ui_toasts", []):
+        st.toast(item.get("text", "Saved"), icon=item.get("icon", "💾"))
 
 
 def queue_garden_reward(reward):
@@ -203,8 +250,15 @@ def render_metric_rows(metric_rows):
 
 def render_sidebar():
     st.markdown(f"### Hi, {first_name}")
-    st.caption("Local profile · data saved on this device")
+    st.caption("Local profile · auto-saves on this device")
     st.caption(f"{'⭐ Pro' if is_pro() else 'Free plan'}")
+    st.divider()
+
+    st.markdown("**Quick start**")
+    st.caption(
+        "1. Set today's targets · 2. Log hours · 3. Note what you studied · "
+        "4. Grow your garden"
+    )
     st.divider()
 
     st.markdown("**Your name**")
@@ -215,13 +269,15 @@ def render_sidebar():
         key="display_name_input",
         label_visibility="collapsed",
         max_chars=40,
+        placeholder="What should we call you?",
+        help="Shown in greetings. Saved on this device only.",
     )
     if st.button("Save name", key="save_display_name", width="stretch"):
         if run_db(
             lambda: set_local_display_name(new_name),
             "Could not save name",
         ) is not None:
-            st.success("Name updated!")
+            flash("Name updated!", toast="Name saved", toast_icon="✅")
             st.rerun()
 
     st.divider()
@@ -235,19 +291,52 @@ def render_sidebar():
         step=0.5,
         key="daily_goal_input",
         label_visibility="collapsed",
+        help="Your personal daily hour target. Used for streaks and garden growth.",
     )
     if st.button("Save goal", key="save_goal_main", width="stretch"):
         if run_db(
             lambda: set_daily_study_goal(new_goal),
             "Could not save study goal",
         ) is not None:
-            st.success("Daily goal updated!")
+            flash("Daily goal updated!", toast="Goal saved", toast_icon="🎯")
             st.rerun()
 
     st.divider()
     st.markdown("**Local data**")
-    st.caption(f"Database file:\n`{get_db_path()}`")
-    st.caption("Export a backup anytime from the sidebar tools below if available.")
+    try:
+        status = get_data_status()
+    except DatabaseError as exc:
+        st.error(f"Data check failed: {exc}")
+        status = None
+
+    if status:
+        if status["ok"]:
+            st.success("Saving works on this device", icon="💾")
+        else:
+            st.error("Database needs attention — see path below.")
+        st.caption(
+            f"**{status['hours_days']}** day(s) with hours · "
+            f"**{status['plan_days']}** day(s) with targets · "
+            f"**{status['garden_xp']:,}** garden XP"
+        )
+        st.caption(f"File: `{status['path']}`")
+        size_kb = max(1, round(status["size_bytes"] / 1024))
+        st.caption(f"Size ~{size_kb} KB · integrity: {status['integrity']}")
+    else:
+        st.caption(f"Database file:\n`{get_db_path()}`")
+
+    backup_bytes = run_db(read_database_backup_bytes, "Could not build backup")
+    if backup_bytes is not None:
+        st.download_button(
+            label="Download full backup (.db)",
+            data=backup_bytes,
+            file_name=f"study_routine_tracker_backup_{date.today().isoformat()}.db",
+            mime="application/x-sqlite3",
+            key="download_sqlite_backup",
+            width="stretch",
+            help="Free: copy of your entire local database. Keep it somewhere safe.",
+        )
+    st.caption("Tip: download a backup weekly. Cloud demos can reset when the host sleeps.")
     st.divider()
     render_pro_unlock_panel()
 
@@ -406,9 +495,10 @@ def render_target_form(plan_date, label):
             clear_draft_form(plan_date)
             st.session_state.show_target_form = False
             st.session_state.planning_date = None
-            st.success(
+            flash(
                 f"Saved {len(targets)} target(s) for "
-                f"{plan_date.strftime('%d %b %Y')}!"
+                f"{plan_date.strftime('%d %b %Y')} — stored on this device.",
+                toast="Targets saved",
             )
             st.rerun()
 
@@ -437,6 +527,8 @@ def on_target_unskip(item_id):
 
 
 flush_pending_garden_toasts()
+flush_pending_ui_toasts()
+show_flash()
 
 now = datetime.now()
 today = date.today()
@@ -501,6 +593,20 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if st.session_state.get("show_welcome"):
+    with st.container(border=True):
+        st.markdown(f"**Welcome, {first_name}!** Your progress is saved automatically on this device.")
+        st.markdown(
+            "- **Targets** — plan what you’ll finish today  \n"
+            "- **Hours** — log study time (builds your streak)  \n"
+            "- **Logbook** — one line on what you studied  \n"
+            "- **Garden** — watch consistency turn into growth  \n"
+            "- **Backup** — sidebar → *Download full backup*"
+        )
+        if st.button("Got it — let's study", type="primary", key="dismiss_welcome"):
+            st.session_state.show_welcome = False
+            st.rerun()
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Study streak", f"{streak} days")
@@ -667,7 +773,10 @@ with tab_daily:
                         ),
                         "Could not save reflection",
                     ) is not None:
-                        st.success("Reflection saved!")
+                        flash(
+                            "Reflection saved on this device.",
+                            toast="Reflection saved",
+                        )
                         st.rerun()
 
     elif not st.session_state.show_target_form:
@@ -715,7 +824,12 @@ with tab_hours:
                     "Could not log study hours",
                 ) is not None:
                     queue_garden_reward(award_hours_garden_xp(hours))
-                    st.success(f"Logged {hours}h for {log_date.strftime('%d %b %Y')}!")
+                    total_after = get_study_hours_for_date(log_date)
+                    flash(
+                        f"Logged {hours}h for {log_date.strftime('%d %b %Y')} "
+                        f"(total now **{total_after:g}h**). Saved on this device.",
+                        toast=f"Saved · {total_after:g}h total",
+                    )
                     st.rerun()
 
         try:
@@ -803,7 +917,7 @@ with tab_logbook:
         '<p class="section-title">What did you study?</p>',
         unsafe_allow_html=True,
     )
-    st.caption("One line is enough — saved to your account, kept forever.")
+    st.caption("One line is enough — saved on this device (use sidebar backup anytime).")
 
     try:
         year_stats = get_activity_log_stats(CURRENT_YEAR)
@@ -858,7 +972,7 @@ with tab_logbook:
             "Could not save log entry",
         ) is not None:
             st.session_state.pop("quick_log_text", None)
-            st.toast("Logged!", icon="📓")
+            flash("Logbook entry saved on this device.", toast="Logged!", toast_icon="📓")
             st.rerun()
 
     st.markdown("**Recent**")
@@ -914,6 +1028,11 @@ with tab_logbook:
                     ),
                     "Could not save log entry",
                 ) is not None:
+                    flash(
+                        "Detailed logbook entry saved on this device.",
+                        toast="Logged!",
+                        toast_icon="📓",
+                    )
                     st.rerun()
 
         if is_pro():
