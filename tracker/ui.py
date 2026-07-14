@@ -40,7 +40,6 @@ from tracker.garden import (
     GARDEN_STAGES,
     XP_REWARDS,
     get_stage_info,
-    render_garden_card,
     render_interactive_garden,
 )
 from tracker.logbook import (

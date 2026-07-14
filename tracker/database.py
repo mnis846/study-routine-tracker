@@ -25,14 +25,6 @@ class DatabaseError(Exception):
     """Raised when a SQLite operation fails."""
 
 
-class AuthRequiredError(DatabaseError):
-    """Raised when a data operation runs without a local profile context."""
-
-
-# Keep resolve_data_dir available as database.resolve_data_dir
-__all_data_helpers__ = ("resolve_data_dir",)
-
-
 def get_db_path() -> str:
     return str(_db_path())
 
@@ -782,103 +774,13 @@ def set_local_display_name(name: str) -> str:
     return cleaned
 
 
-EXAM_TEST_COUNT = 0
-EXAM_TESTS = []
-MONSOON_TEST_COUNT = 0
-MONSOON_TESTS = []
-
-
-def _insert_monsoon_tests(conn, user_id):
-    rows = [(user_id, *test) for test in EXAM_TESTS]
-    conn.executemany(
-        """INSERT INTO scheduled_tests
-           (user_id, test_no, level, test_type, subject, scheduled_date, topic_focus)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        rows,
-    )
-
-
-def _needs_monsoon_migration(conn, user_id):
-    if _read_setting(conn, "exam_series_v1", user_id) == "1":
-        return False
-    count = conn.execute(
-        "SELECT COUNT(*) FROM scheduled_tests WHERE user_id = ?", (user_id,)
-    ).fetchone()[0]
-    if count == 0:
-        return False
-    row = conn.execute(
-        "SELECT subject FROM scheduled_tests WHERE user_id = ? AND test_no = 1",
-        (user_id,),
-    ).fetchone()
-    if not row:
-        return count < EXAM_TEST_COUNT
-    return row[0] == "General Studies — History" or count < EXAM_TEST_COUNT
-
-
-def seed_monsoon_tests_for_user(user_id):
-    """No-op: mock schedules are not seeded."""
-    return
-
-
-def seed_sample_tests():
-    """No-op: mock schedules are not seeded."""
-    return
-
-
 def provision_new_user(user_id):
-    """Initialize per-user defaults after signup."""
+    """Initialize per-user defaults for the local profile."""
     with db_connection() as conn:
         if _read_setting(conn, "daily_study_goal_hours", user_id) is None:
             _write_setting(
                 conn, "daily_study_goal_hours", DEFAULT_DAILY_GOAL_HOURS, user_id
             )
-
-
-def get_user_credentials_dict():
-    with db_connection(commit=False) as conn:
-        rows = conn.execute(
-            """SELECT username, email, first_name, last_name, password_hash
-               FROM users ORDER BY username"""
-        ).fetchall()
-    usernames = {}
-    for row in rows:
-        usernames[row["username"]] = {
-            "email": row["email"],
-            "first_name": row["first_name"] or row["username"],
-            "last_name": row["last_name"] or "",
-            "password": row["password_hash"],
-        }
-    return {"usernames": usernames}
-
-
-def get_user_id_by_username(username):
-    with db_connection(commit=False) as conn:
-        row = conn.execute(
-            "SELECT id FROM users WHERE username = ?", (username,)
-        ).fetchone()
-    if not row:
-        raise DatabaseError(f"User '{username}' not found.")
-    return int(row[0])
-
-
-def save_registered_user(username, email, name, credentials):
-    """Persist a newly registered user from streamlit-authenticator."""
-    entry = credentials["usernames"].get(username)
-    if not entry:
-        raise DatabaseError("Registration data missing for new user.")
-    parts = (name or username).split(maxsplit=1)
-    first_name = parts[0]
-    last_name = parts[1] if len(parts) > 1 else ""
-    with db_connection() as conn:
-        conn.execute(
-            """INSERT INTO users (username, email, first_name, last_name, password_hash)
-               VALUES (?, ?, ?, ?, ?)""",
-            (username, email, first_name, last_name, entry["password"]),
-        )
-        user_id = conn.execute(
-            "SELECT id FROM users WHERE username = ?", (username,)
-        ).fetchone()[0]
-    provision_new_user(int(user_id))
 
 
 def get_setting(key, default=None, user_id=None):
@@ -1030,31 +932,10 @@ def _parse_log_date(value):
     return date.fromisoformat(str(value)[:10])
 
 
-def default_max_score(test_type):
-    """Default total marks: full-length papers 200, sectionals 100."""
-    kind = (test_type or "").strip().upper()
-    if kind == "FLT":
-        return 200.0
-    return 100.0
-
-
-def score_percentage(score, max_score):
-    """Return marks as a 0-100 percentage, or None if either value is missing/invalid."""
-    if score is None or max_score is None:
-        return None
-    try:
-        if pd.isna(score) or pd.isna(max_score):
-            return None
-        max_val = float(max_score)
-        if max_val <= 0:
-            return None
-        return round(float(score) / max_val * 100, 1)
-    except (TypeError, ValueError):
-        return None
-
-
 def _ensure_scheduled_tests_max_score(conn):
-    """Add max_score column on existing DBs and backfill defaults by test type."""
+    """Add max_score column on existing DBs (legacy table kept for backups)."""
+    if not _table_exists(conn, "scheduled_tests"):
+        return
     if not _table_has_column(conn, "scheduled_tests", "max_score"):
         conn.execute("ALTER TABLE scheduled_tests ADD COLUMN max_score REAL")
     conn.execute(
@@ -1085,28 +966,6 @@ def get_study_hours_map(start_date, end_date=None):
     for _, row in df.iterrows():
         result[_parse_log_date(row["log_date"])] = float(row["hours"])
     return result
-
-
-def add_daily_target(plan_date, description, planned_hours=0):
-    """Append a single target to an existing or new daily plan."""
-    desc = (description or "").strip()
-    if not desc:
-        raise DatabaseError("Target description cannot be empty.")
-    uid = get_current_user_id()
-    with db_connection() as conn:
-        c = conn.cursor()
-        plan_id = _get_or_create_plan_id(plan_date, conn, uid)
-        c.execute(
-            "SELECT COALESCE(MAX(order_index), -1) FROM daily_target_items WHERE plan_id = ?",
-            (plan_id,),
-        )
-        next_index = int(c.fetchone()[0]) + 1
-        c.execute(
-            """INSERT INTO daily_target_items
-               (plan_id, description, planned_hours, order_index, status)
-               VALUES (?, ?, ?, ?, 'Pending')""",
-            (plan_id, desc, float(planned_hours or 0), next_index),
-        )
 
 
 def get_longest_streak():
@@ -1331,59 +1190,6 @@ def get_daily_plan_summary(plan_date):
     }
 
 
-def get_scheduled_tests():
-    uid = get_current_user_id()
-    with db_connection(commit=False) as conn:
-        return pd.read_sql(
-            "SELECT * FROM scheduled_tests WHERE user_id = ? ORDER BY test_no",
-            conn,
-            params=(uid,),
-        )
-
-
-def get_next_scheduled_test():
-    uid = get_current_user_id()
-    today_str = date.today().isoformat()
-    with db_connection(commit=False) as conn:
-        df = pd.read_sql(
-            """SELECT * FROM scheduled_tests
-               WHERE user_id = ?
-                 AND (status != 'Attempted' OR status IS NULL)
-                 AND scheduled_date >= ?
-               ORDER BY scheduled_date ASC
-               LIMIT 1""",
-            conn,
-            params=(uid, today_str),
-        )
-        if df.empty:
-            df = pd.read_sql(
-                """SELECT * FROM scheduled_tests
-                   WHERE user_id = ?
-                     AND (status != 'Attempted' OR status IS NULL)
-                   ORDER BY scheduled_date ASC
-                   LIMIT 1""",
-                conn,
-                params=(uid,),
-            )
-    if df.empty:
-        return None
-    return df.iloc[0].to_dict()
-
-
-def get_test_series_progress():
-    df = get_scheduled_tests()
-    attempted = df[df["status"] == "Attempted"]
-    scores = attempted["score"].dropna()
-    total_hours = round(float(df["hours_studied"].fillna(0).sum()), 1)
-    return {
-        "total": len(df),
-        "attempted": len(attempted),
-        "avg_score": round(scores.mean(), 1) if not scores.empty else None,
-        "total_hours": total_hours,
-        "scores": attempted[["test_no", "subject", "scheduled_date", "score"]].copy(),
-    }
-
-
 def get_garden_xp():
     raw = get_setting("garden_xp", "0")
     try:
@@ -1534,43 +1340,4 @@ def get_garden_state(streak=0, today=None):
         "stage_info": get_stage_info(xp),
         "events": get_garden_events(8),
         "life": life,
-        "vitality": life,
     }
-
-
-def update_scheduled_test(
-    test_no,
-    status=None,
-    hours_studied=_UNSET,
-    score=_UNSET,
-    max_score=_UNSET,
-    remarks=_UNSET,
-):
-    uid = get_current_user_id()
-    updates = []
-    params = []
-    if status:
-        updates.append("status = ?")
-        params.append(status)
-    if hours_studied is not _UNSET:
-        updates.append("hours_studied = ?")
-        params.append(hours_studied)
-    if score is not _UNSET:
-        updates.append("score = ?")
-        params.append(score)
-    if max_score is not _UNSET:
-        updates.append("max_score = ?")
-        params.append(max_score)
-    if remarks is not _UNSET:
-        updates.append("remarks = ?")
-        params.append(remarks)
-    if not updates:
-        return
-
-    params.extend([test_no, uid])
-    with db_connection() as conn:
-        conn.execute(
-            f"""UPDATE scheduled_tests SET {', '.join(updates)}
-                WHERE test_no = ? AND user_id = ?""",
-            params,
-        )

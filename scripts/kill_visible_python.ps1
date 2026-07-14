@@ -1,6 +1,6 @@
 # Kill desktop tracker python processes (broad match).
 $ErrorActionPreference = "SilentlyContinue"
-$patterns = @("*deathstar*", "*desktop_companion*", "*streamlit*app.py*", "*study_routine*")
+$patterns = @("*desktop_companion*", "*streamlit*app.py*", "*study_routine*")
 
 Write-Host ""
 Write-Host "All python / pythonw processes:"

@@ -1,9 +1,6 @@
 # Stop tracker desktop apps and/or the Streamlit website.
 param(
-    [switch]$WatcherOnly,
-    [switch]$DeathStarOnly,
     [switch]$StickerOnly,
-    [switch]$VaderOnly,
     [switch]$TrackerOnly
 )
 
@@ -11,10 +8,8 @@ $ErrorActionPreference = "SilentlyContinue"
 . (Join-Path $PSScriptRoot "tracker_processes.ps1")
 
 $keys = @()
-if ($DeathStarOnly) { $keys += "deathstar" }
-elseif ($StickerOnly -or $VaderOnly) { $keys += "sticker" }
+if ($StickerOnly) { $keys += "sticker" }
 elseif ($TrackerOnly) { $keys += "sticker", "streamlit" }
-elseif ($WatcherOnly) { $keys += "sticker", "deathstar" }
 # default: stop everything
 
 $patterns = Get-TrackerPatterns -Keys $(if ($keys.Count) { $keys } else { $null })

@@ -8,14 +8,8 @@ $script:TrackerProcessDefs = @(
     },
     @{
         Key     = "sticker"
-        Name    = "Study sticker"
+        Name    = "Study coach sticker"
         Pattern = "*desktop_companion*"
-        Exe     = "pythonw.exe"
-    },
-    @{
-        Key     = "deathstar"
-        Name    = "Desktop companion watcher"
-        Pattern = "*deathstar_watcher*"
         Exe     = "pythonw.exe"
     }
 )
@@ -28,9 +22,9 @@ function Get-TrackerProcesses {
         foreach ($def in $script:TrackerProcessDefs) {
             if ($cmd -like $def.Pattern) {
                 $found += [PSCustomObject]@{
-                    Key       = $def.Key
-                    Name      = $def.Name
-                    ProcessId = $proc.ProcessId
+                    Key         = $def.Key
+                    Name        = $def.Name
+                    ProcessId   = $proc.ProcessId
                     CommandLine = $cmd
                 }
                 break

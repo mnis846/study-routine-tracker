@@ -358,12 +358,6 @@ def _quick_log_hours(hours: float) -> None:
 
         init_db()
         add_daily_study_hours(date.today(), hours, "Quick log - widget")
-        try:
-            from tracker.git_sync import notify_data_changed
-
-            notify_data_changed()
-        except Exception:
-            pass
         key = pick_coach_key()
         coach = get_coach(key)
         _notify(coach["name"], f"Logged {hours:g}h. {get_line(key, 'praise')}")
@@ -2421,12 +2415,6 @@ def main():
         sys.exit(0)
     sys.path.insert(0, str(ROOT))
     sticker_only = "--sticker-only" in sys.argv
-    try:
-        from tracker.git_sync import notify_data_changed, start_background_sync
-
-        start_background_sync()
-    except Exception:
-        pass
     if not sticker_only:
         _ensure_streamlit()
         time.sleep(1)

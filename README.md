@@ -133,13 +133,6 @@ streamlit run app.py
 python desktop_companion.py
 ```
 
-### Optional: Reflex multipage UI (experimental)
-
-```bash
-pip install -r requirements-reflex.txt
-reflex run
-```
-
 ---
 
 ## Features (Free vs Pro)
@@ -192,10 +185,9 @@ The sidebar shows the active database path.
 
 ## Tech stack
 
-- **Python + Streamlit** — primary UI  
+- **Python + Streamlit** — UI  
 - **SQLite** — local persistence  
 - **Pandas + Plotly** — analytics  
-- **Optional Reflex app** (`study_tracker/`) — experimental multi-page UI  
 
 ---
 
@@ -204,7 +196,6 @@ The sidebar shows the active database path.
 ```
 app.py                 # Streamlit entry (thin)
 tracker/               # App package (UI, database, garden, …)
-study_tracker/         # Optional Reflex multipage app
 assets/ · games/       # Stickers, CSS, break games
 docs/                  # Screenshots + STRUCTURE.md
 tests/                 # Persistence smoke tests

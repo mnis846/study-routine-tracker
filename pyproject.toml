@@ -16,13 +16,5 @@ dependencies = [
     "plyer>=2.1.0,<3",
 ]
 
-[project.optional-dependencies]
-mobile = [
-    "flet>=0.27.0",
-]
-reflex = [
-    # see requirements-reflex.txt for the full Reflex stack
-]
-
 [tool.setuptools.packages.find]
-include = ["tracker*", "study_tracker*"]
+include = ["tracker*"]

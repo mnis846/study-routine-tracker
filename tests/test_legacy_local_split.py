@@ -44,16 +44,29 @@ try:
 except Exception as exc:
     print(" (empty or new db)", exc)
 
+# Capture XP before init so we don't hard-code a value that changes over time
+xp_before = None
+try:
+    with db.db_connection(commit=False) as conn:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key='garden_xp' LIMIT 1"
+        ).fetchone()
+        if row:
+            xp_before = int(row[0])
+except Exception:
+    pass
+
 db.init_db()
 uid = db.get_current_user_id()
 print("current user", uid)
 print("display", db.get_local_display_name())
 print("garden_xp", db.get_garden_xp())
-if SRC.exists():
-    assert db.get_garden_xp() == 150, "expected legacy garden XP retained"
+if xp_before is not None:
+    assert db.get_garden_xp() == xp_before, "expected existing garden XP retained"
 status = db.get_data_status()
 assert status["ok"], status
 assert status["user_count"] == 1, status
+xp_primary = db.get_garden_xp()
 
 with db.db_connection(commit=False) as conn:
     users = list(conn.execute("SELECT id, username FROM users"))
@@ -67,8 +80,7 @@ assert abs(db.get_study_hours_for_date(date.today()) - 2.5) < 1e-9
 db._current_user_id.set(None)
 db.init_db()
 assert abs(db.get_study_hours_for_date(date.today()) - 2.5) < 1e-9
-if SRC.exists():
-    assert db.get_garden_xp() == 150
+assert db.get_garden_xp() == xp_primary
 
 with db.db_connection() as conn:
     conn.execute(
@@ -90,8 +102,8 @@ with db.db_connection() as conn:
 db._current_user_id.set(None)
 db.init_db()
 assert db.get_data_status()["user_count"] == 1
-if SRC.exists():
-    assert db.get_garden_xp() == 150
+# primary already has XP; orphan 20 must not overwrite
+assert db.get_garden_xp() == xp_primary
 assert abs(db.get_study_hours_for_date(date.fromisoformat("2026-07-01")) - 3.0) < 1e-9
 
 backup = db.read_database_backup_bytes()
