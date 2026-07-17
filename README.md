@@ -66,8 +66,26 @@ It uses the project `venv` and opens the browser.
 | File | What it does |
 | --- | --- |
 | `Start Tracker.bat` | Start the app |
-| `Tracker Control.bat` | Start / stop / status helpers |
+| `Tracker Control.bat` | Start / stop / status / autostart |
+| `Install Autostart.bat` | Start the app every time Windows logs in |
+| `Remove Autostart.bat` | Turn off login autostart |
 | `Stop Sticker.bat` | Stop the optional desktop coach |
+
+### Autostart on Windows login
+
+Want the tracker to open automatically when you start your PC?
+
+1. Finish the install steps above once (`venv` + `pip install`).
+2. Double-click **`Install Autostart.bat`**  
+   (or open **`Tracker Control.bat`** → **6. Install autostart**).
+
+On every login, Streamlit starts in the background and opens **http://localhost:8501**.
+
+**To turn it off anytime:**
+
+- Double-click **`Remove Autostart.bat`**, or  
+- **`Tracker Control.bat`** → **7. Remove autostart**, or  
+- **3. Stop everything** to close a running session without removing autostart.
 
 ---
 
