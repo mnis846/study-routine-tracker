@@ -19,8 +19,8 @@ Set daily targets, log hours, keep a subject logbook, grow your garden with XP, 
 
 <p align="center">
   <a href="#streamlit-app-for-most-users"><strong>Start with Streamlit</strong></a> ·
-  <a href="#-features-free-vs-pro"><strong>Free vs Pro</strong></a> ·
   <a href="#-live-demo"><strong>Live demo</strong></a> ·
+  <a href="#one-click-setup-local-streamlit"><strong>Local setup</strong></a> ·
   <a href="#-license"><strong>MIT License</strong></a>
 </p>
 
@@ -111,18 +111,9 @@ Optional secrets (Pro codes): `.streamlit/secrets.toml.example` → Cloud **Secr
 
 Browser opens at **http://localhost:8501**. **No signup.** Progress saves automatically.
 
-### Cross-platform (any OS)
+Or from the activated venv:
 
 ```bash
-git clone https://github.com/mnis846/study-routine-tracker.git
-cd study-routine-tracker
-
-python -m venv venv
-# Windows:  venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-pip install -r requirements.txt
 streamlit run app.py
 ```
 
@@ -133,42 +124,6 @@ python desktop_companion.py
 ```
 
 Pairs with the Streamlit app for quick hour logs from the tray sticker.
-
----
-
-## Features (Free vs Pro)
-
-### Free forever
-
-| Feature | Details |
-| --- | --- |
-| **Daily targets** | Plan morning goals; check off or skip; evening reflection (up to **3** targets/day) |
-| **Hours tracking** | Quick logs, daily goal, weekly charts, study streak |
-| **Logbook** | Subject + activity journal |
-| **Study Garden** | XP growth through early stages (capped for free users) |
-| **Show-up heatmap** | GitHub-style consistency grid |
-| **Break games** | Short reset mini-games between sessions |
-| **Local-first data** | Single local profile · SQLite on device · no forced login |
-
-### Pro (one-time unlock)
-
-| Feature | Details |
-| --- | --- |
-| **Unlimited daily targets** | No 3-target cap |
-| **Full garden path** | All evolution stages (foundation path → exam sprint) |
-| **CSV export** | Download hours, targets, and logbook |
-| **Extended analytics** | Longest streak and richer history views |
-| **Study coach sticker** | Desktop companion characters (Windows) |
-
-Unlock flow: pay (Razorpay link when configured) → enter unlock code in **Settings**. Default list price in config: **₹499** one-time.
-
-### Future / roadmap ideas
-
-- Spaced-revision reminders  
-- Multi-device sync / export polish  
-- Optional accounts when multi-user is needed  
-- AI weekly review (local or API)  
-- Academy tier (coaching batch features)
 
 ---
 
