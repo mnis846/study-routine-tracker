@@ -1,16 +1,19 @@
 [project]
 name = "study-routine-tracker"
 version = "1.0.0"
-description = "Gamified local-first study routine tracker for competitive exam aspirants"
+description = "Gamified local-first study routine tracker"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "streamlit>=1.35.0,<2",
-    "pandas>=2.0.0,<3",
-    "plotly>=5.18.0,<6",
+    "pandas>=2.0.0,<4",
+    "plotly>=5.18.0,<7",
     "python-chess>=1.999,<2",
-    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+desktop = [
     "pystray>=0.19.0,<1",
     "Pillow>=10.0.0,<12",
     "plyer>=2.1.0,<3",
