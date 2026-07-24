@@ -1,5 +1,5 @@
 /* Offline cache for the tablet PWA — study data stays in IndexedDB/localStorage. */
-const CACHE = "srt-tablet-v2";
+const CACHE = "srt-tablet-v3";
 
 // Resolve every asset relative to this service worker (works on GitHub Pages subpaths).
 const BASE = self.location.href.replace(/sw\.js(?:\?.*)?$/, "");
@@ -9,6 +9,7 @@ const ASSETS = [
   "css/app.css",
   "js/db.js",
   "js/logic.js",
+  "js/garden.js",
   "js/app.js",
   "manifest.webmanifest",
   "icons/icon.svg",

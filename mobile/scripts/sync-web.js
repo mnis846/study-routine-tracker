@@ -38,7 +38,7 @@ const appJs = path.join(dest, "js", "app.js");
 if (fs.existsSync(appJs)) {
   let text = fs.readFileSync(appJs, "utf8");
   text = text.replace(
-    /if\s*\(\s*"serviceWorker"\s*in\s*navigator\s*\)\s*\{[\s\S]*?\}\s*catch\s*\{[\s\S]*?\}\s*\}/m,
+    /\/\/ Service worker only helps[\s\S]*?catch\s*\{[\s\S]*?\}\s*\}/,
     "/* service worker disabled in Capacitor APK */"
   );
   fs.writeFileSync(appJs, text);

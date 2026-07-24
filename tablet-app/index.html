@@ -92,10 +92,28 @@
         <h3>This week</h3>
         <div class="week-bars" id="week-bars"></div>
       </div>
-      <div class="card">
-        <h3>Study calendar</h3>
-        <p class="muted">Green = days you studied. Data is only on this device.</p>
-        <div class="heat" id="heatmap"></div>
+      <div class="card heat-card">
+        <div class="heat-head">
+          <div>
+            <h3>Study calendar</h3>
+            <p class="muted" id="heat-summary">Past year of show-up days</p>
+          </div>
+          <div class="heat-legend" aria-hidden="true">
+            <span>Less</span>
+            <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i>
+            <span>More</span>
+          </div>
+        </div>
+        <div class="heat-scroll" id="heat-scroll">
+          <div class="heat-months" id="heat-months"></div>
+          <div class="heat-body">
+            <div class="heat-dow" aria-hidden="true">
+              <span></span><span>M</span><span></span><span>W</span><span></span><span>F</span><span></span>
+            </div>
+            <div class="heat-grid" id="heatmap"></div>
+          </div>
+        </div>
+        <p class="muted heat-tip" id="heat-tip">Tap a square for details · scroll sideways for the full year</p>
       </div>
     </section>
 
@@ -126,27 +144,43 @@
 
     <!-- GARDEN -->
     <section id="page-garden" class="hidden">
+      <div class="card garden-map-card">
+        <canvas id="garden-canvas" class="garden-canvas" width="360" height="320" aria-label="Study garden map"></canvas>
+        <p class="muted garden-hint" id="garden-hint">Swipe the map · 4 complete study days plant a new tree</p>
+      </div>
       <div class="card">
-        <div class="garden-visual" id="garden-emoji">🌱</div>
-        <h3 style="text-align:center" id="garden-stage">First Sprout</h3>
-        <p class="muted" style="text-align:center">
-          <span id="garden-xp">0 XP</span> ·
-          <span id="garden-trees">1 trees</span> ·
-          <span id="garden-goal-streak">0 complete-day streak</span>
-        </p>
+        <div class="garden-stage-row">
+          <div class="garden-visual" id="garden-emoji">🌱</div>
+          <div>
+            <h3 id="garden-stage" style="margin:0 0 4px">First Sprout</h3>
+            <p class="muted" style="margin:0">
+              <span id="garden-xp">0 XP</span> ·
+              <span id="garden-trees">1 trees</span>
+            </p>
+            <p class="muted" style="margin:4px 0 0" id="garden-goal-streak">0 complete-day streak</p>
+          </div>
+        </div>
         <div class="progress"><span id="garden-progress" style="width:0%"></span></div>
-        <p class="muted" style="text-align:center" id="garden-next"></p>
-        <p class="muted" style="margin-top:10px">
-          Complete your daily hour goal to grow trees. Every 4 complete days plants the next tree.
-          Finish plan items and log hours to earn XP.
-        </p>
+        <p class="muted" id="garden-next"></p>
+        <div class="week-dots" id="garden-week-dots"></div>
+        <div class="stats" style="margin-top:10px;margin-bottom:0">
+          <div class="stat"><div class="label">Life</div><div class="value" id="garden-life">—</div></div>
+          <div class="stat"><div class="label">Water today</div><div class="value" id="garden-water">0%</div></div>
+          <div class="stat"><div class="label">Harvest</div><div class="value" id="garden-harvest">🌱</div></div>
+          <div class="stat"><div class="label">Foundation</div><div class="value" id="garden-foundation">1/55</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Evolution path</h3>
+        <div class="badge-grid" id="garden-badges"></div>
+      </div>
+      <div class="card">
+        <h3>Latest trees</h3>
+        <div id="garden-tree-list"></div>
       </div>
       <div class="card">
         <h3>Recent growth</h3>
         <div id="garden-feed"></div>
-      </div>
-      <div class="card">
-        <p class="muted">Trees planted so far: <strong id="stat-trees">1</strong></p>
       </div>
     </section>
 
@@ -172,10 +206,15 @@
         </div>
       </div>
       <div class="card">
+        <h3>Storage on this device</h3>
+        <p class="muted" id="storage-stats">Loading…</p>
+        <p class="muted">Keeps about 2 years of daily hours &amp; plans, thousands of notes, and garden history — all offline.</p>
+      </div>
+      <div class="card">
         <h3>About</h3>
         <p class="muted">
-          Offline study tracker for tablets. All data stays in this browser / installed app —
-          no account and no cloud required.
+          Offline study tracker for phones &amp; tablets. Data stays in this app —
+          no account required.
         </p>
         <p class="muted">Windows PC users can still use the Streamlit laptop app in this same project.</p>
       </div>
@@ -226,6 +265,7 @@
 
   <script src="js/db.js"></script>
   <script src="js/logic.js"></script>
+  <script src="js/garden.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

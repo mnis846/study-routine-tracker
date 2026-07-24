@@ -1,5 +1,5 @@
 /**
- * Study rules: streaks, XP, garden growth (mirrors core Streamlit logic, simplified).
+ * Study rules: streaks, XP, garden grove, year-long heatmap.
  */
 (function (global) {
   const XP = {
@@ -34,7 +34,17 @@
   ];
 
   const STREAK_DAYS_PER_TREE = 4;
+  const FOUNDATION_TREE_TARGET = 55;
   const MAX_TREES = 77;
+
+  const HARVEST_TIERS = [
+    { id: "sprout", min_days: 0, emoji: "🌱", label: "First Tree" },
+    { id: "grove", min_days: 4, emoji: "🌳", label: "Second Tree" },
+    { id: "fruit", min_days: 6, emoji: "🍎", label: "Fruit Season" },
+    { id: "golden", min_days: 7, emoji: "🏆", label: "Golden Grove" },
+  ];
+
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   function todayISO(d = new Date()) {
     const y = d.getFullYear();
@@ -67,7 +77,7 @@
     let cursor = today;
     if (hoursOn(state, today) < goal) cursor = addDays(today, -1);
     let streak = 0;
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 800; i++) {
       if (hoursOn(state, cursor) >= goal) {
         streak += 1;
         cursor = addDays(cursor, -1);
@@ -77,11 +87,10 @@
   }
 
   function studyStreak(state, today = todayISO()) {
-    // Any hours > 0 counts for "show up" streak
     let cursor = today;
     if (hoursOn(state, today) <= 0) cursor = addDays(today, -1);
     let streak = 0;
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 800; i++) {
       if (hoursOn(state, cursor) > 0) {
         streak += 1;
         cursor = addDays(cursor, -1);
@@ -112,7 +121,13 @@
       progress = span ? (xp - current.min_xp) / span : 1;
       xpToNext = Math.max(0, next.min_xp - xp);
     }
-    return { index: idx, current, next, progress: Math.min(1, Math.max(0, progress)), xpToNext };
+    return {
+      index: idx,
+      current,
+      next,
+      progress: Math.min(1, Math.max(0, progress)),
+      xpToNext,
+    };
   }
 
   function treeCount(goalStreakDays) {
@@ -120,12 +135,129 @@
     return Math.min(MAX_TREES, 1 + Math.floor(goalStreakDays / STREAK_DAYS_PER_TREE));
   }
 
+  function harvestTier(goalStreakDays) {
+    let tier = HARVEST_TIERS[0];
+    for (const t of HARVEST_TIERS) {
+      if (goalStreakDays >= t.min_days) tier = t;
+    }
+    return tier;
+  }
+
+  function weekGoalDays(state, today = todayISO()) {
+    const goal = Number(state.dailyGoal) || 6;
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = addDays(today, -i);
+      const h = hoursOn(state, d);
+      let status = "empty";
+      if (h >= goal) status = "complete";
+      else if (h > 0) status = "partial";
+      days.push({ date: d, hours: h, status });
+    }
+    return days;
+  }
+
+  function buildTrees(goalStreakDays, water, hasFruit) {
+    const unlocked = treeCount(goalStreakDays);
+    const trees = [];
+    for (let n = 1; n <= unlocked; n++) {
+      const phase = n <= FOUNDATION_TREE_TARGET ? "foundation" : "sprint";
+      let growth = "sapling";
+      if (goalStreakDays >= 4) growth = "mature";
+      else if (goalStreakDays >= 2) growth = "young";
+      if (hasFruit) growth = "fruiting";
+      trees.push({
+        tree_no: n,
+        phase,
+        subject:
+          phase === "foundation"
+            ? `Foundation Block ${n}`
+            : `Exam Sprint ${n - FOUNDATION_TREE_TARGET}`,
+        growth,
+        has_fruit: hasFruit,
+        water,
+      });
+    }
+    return trees;
+  }
+
+  function gardenLife(state, today = todayISO()) {
+    const goal = Number(state.dailyGoal) || 6;
+    const todayHours = hoursOn(state, today);
+    const gStreak = goalStreak(state, today);
+    const week = weekGoalDays(state, today);
+    const unlocked = treeCount(gStreak);
+    const water = goal > 0 ? Math.min(1, todayHours / goal) : 0;
+    const hasFruit = gStreak >= 6;
+    const trees = buildTrees(gStreak, water, hasFruit);
+    const tier = harvestTier(gStreak);
+    const foundationTrees = Math.min(unlocked, FOUNDATION_TREE_TARGET);
+    const daysToNextTree =
+      unlocked < MAX_TREES ? Math.max(0, unlocked * STREAK_DAYS_PER_TREE - gStreak) : 0;
+
+    let life = 28;
+    week.forEach((d) => {
+      if (d.status === "complete") life += 10;
+      else if (d.status === "partial") life += 3;
+    });
+    life = Math.min(100, life);
+
+    const goalMet = todayHours >= goal;
+    let mood = "resting";
+    let hint =
+      `Long prep path: ~${FOUNDATION_TREE_TARGET} foundation trees + exam sprint. ` +
+      `Study ${goal}h/day — 4 complete days plant a new tree.`;
+    if (goalMet) {
+      mood = "flourishing";
+      hint = `${gStreak}-day complete streak · ${unlocked}/${MAX_TREES} trees · foundation ${foundationTrees}/${FOUNDATION_TREE_TARGET}.`;
+    } else if (todayHours > 0) {
+      mood = "growing";
+      hint = `Watering ${Math.round(water * 100)}% — ${(goal - todayHours).toFixed(1)}h more today keeps the grove alive.`;
+    } else if (gStreak > 0) {
+      mood = "thirsty";
+      hint = "Trees are thirsty — log hours before midnight to protect your streak.";
+    }
+    if (daysToNextTree > 0 && unlocked < MAX_TREES) {
+      hint += ` · ${daysToNextTree}d until tree #${unlocked + 1}.`;
+    }
+
+    return {
+      life,
+      mood,
+      goal_streak: gStreak,
+      harvest_tier: tier.id,
+      harvest_label: tier.label,
+      harvest_emoji: tier.emoji,
+      trees,
+      tree_count: unlocked,
+      unlocked_count: unlocked,
+      max_trees: MAX_TREES,
+      foundation_target: FOUNDATION_TREE_TARGET,
+      foundation_trees: foundationTrees,
+      journey_phase: unlocked <= FOUNDATION_TREE_TARGET ? "foundation" : "sprint",
+      has_fruit: hasFruit,
+      water_level: water,
+      water_pct: Math.round(water * 100),
+      today_hours: todayHours,
+      daily_goal: goal,
+      goal_met: goalMet,
+      week_days: week,
+      days_to_next_tree: daysToNextTree,
+      next_tree:
+        unlocked < MAX_TREES
+          ? { tree_no: unlocked + 1, days_away: daysToNextTree }
+          : null,
+      hint,
+      stage: stageInfo(state.gardenXp || 0),
+    };
+  }
+
   function addXp(state, amount, message) {
     const xp = Math.max(0, Math.floor(amount));
     if (!xp) return null;
     state.gardenXp = (state.gardenXp || 0) + xp;
     const event = { id: uid(), date: todayISO(), xp, message };
-    state.gardenEvents = [event, ...(state.gardenEvents || [])].slice(0, 80);
+    state.gardenEvents = [event, ...(state.gardenEvents || [])].slice(0, 600);
     return event;
   }
 
@@ -173,27 +305,72 @@
     const rows = [];
     for (let i = 6; i >= 0; i--) {
       const d = addDays(today, -i);
-      const h = hoursOn(state, d);
-      rows.push({ date: d, hours: h, isToday: d === today });
+      rows.push({ date: d, hours: hoursOn(state, d), isToday: d === today });
     }
     return rows;
   }
 
-  function heatmapDays(state, days = 119, today = todayISO()) {
+  /**
+   * GitHub-style contribution grid for ~1 year (53 weeks).
+   * Columns = weeks (Sun→Sat rows), smooth horizontal scroll in UI.
+   */
+  function heatmapGrid(state, today = todayISO()) {
     const goal = Number(state.dailyGoal) || 6;
-    const out = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = addDays(today, -i);
-      const h = hoursOn(state, d);
-      out.push({ date: d, hours: h, level: heatLevel(h, goal), isToday: d === today });
+    const end = parseISO(today);
+    // Align end week to Saturday for GitHub-style
+    const endDow = end.getDay(); // 0 Sun
+    // Start: 52 weeks back from start of this week (Sunday)
+    const start = new Date(end);
+    start.setDate(start.getDate() - endDow - 52 * 7);
+
+    const weeks = [];
+    const monthLabels = [];
+    let cursor = new Date(start);
+    let showups = 0;
+    let totalHours = 0;
+
+    for (let w = 0; w < 53; w++) {
+      const week = [];
+      let monthLabel = "";
+      for (let d = 0; d < 7; d++) {
+        const iso = todayISO(cursor);
+        const future = cursor > end;
+        const h = future ? 0 : hoursOn(state, iso);
+        if (!future) {
+          totalHours += h;
+          if (h > 0) showups += 1;
+        }
+        if (cursor.getDate() === 1) monthLabel = MONTHS[cursor.getMonth()];
+        week.push({
+          date: iso,
+          hours: h,
+          level: future ? -1 : heatLevel(h, goal),
+          isToday: iso === today,
+          isFuture: future,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      weeks.push(week);
+      monthLabels.push(monthLabel);
     }
-    return out;
+
+    return {
+      weeks,
+      monthLabels,
+      showups,
+      totalHours: Math.round(totalHours * 10) / 10,
+      goal,
+    };
   }
 
   global.SRTLogic = {
     XP,
     STAGES,
+    HARVEST_TIERS,
+    FOUNDATION_TREE_TARGET,
+    MAX_TREES,
     todayISO,
+    parseISO,
     addDays,
     uid,
     hoursOn,
@@ -201,12 +378,13 @@
     studyStreak,
     stageInfo,
     treeCount,
+    gardenLife,
     processCheckin,
     awardHours,
     awardTargetDone,
     awardAllTargets,
     weekHours,
-    heatmapDays,
+    heatmapGrid,
     heatLevel,
   };
 })(window);

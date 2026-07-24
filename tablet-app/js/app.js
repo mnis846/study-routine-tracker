@@ -1,10 +1,11 @@
 (function () {
-  const { loadState, saveState, exportJson, importJson } = window.SRTDB;
+  const { loadState, saveState, exportJson, importJson, stats } = window.SRTDB;
   const L = window.SRTLogic;
 
   let state = null;
   let page = "today";
   let deferredInstall = null;
+  let gardenCtrl = null;
 
   const $ = (sel) => document.querySelector(sel);
   const pages = {
@@ -35,8 +36,21 @@
     document.querySelectorAll(".nav button").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.page === name);
     });
+    if (name === "garden" && gardenCtrl) {
+      gardenCtrl.start();
+      requestAnimationFrame(() => gardenCtrl.layout());
+    } else if (gardenCtrl) {
+      gardenCtrl.stop();
+    }
     render();
     window.scrollTo(0, 0);
+    // Scroll heatmap to show recent weeks (right side)
+    if (name === "hours") {
+      requestAnimationFrame(() => {
+        const sc = $("#heat-scroll");
+        if (sc) sc.scrollLeft = sc.scrollWidth;
+      });
+    }
   }
 
   function openSheet(id) {
@@ -63,7 +77,6 @@
       month: "long",
     });
     const streak = L.studyStreak(state, today);
-    const goalStreak = L.goalStreak(state, today);
     const todayH = L.hoursOn(state, today);
     const goal = Number(state.dailyGoal) || 6;
     const goalLabel = Number.isInteger(goal) ? String(goal) : String(goal);
@@ -72,7 +85,7 @@
     $("#stat-today").textContent = `${todayH}h`;
     $("#stat-xp").textContent = String(state.gardenXp || 0);
     const treesEl = $("#stat-trees");
-    if (treesEl) treesEl.textContent = String(L.treeCount(goalStreak));
+    if (treesEl) treesEl.textContent = String(L.treeCount(L.goalStreak(state, today)));
   }
 
   function renderWelcome() {
@@ -161,22 +174,59 @@
     bars.innerHTML = "";
     week.forEach((w) => {
       const h = Math.max(4, Math.round((w.hours / maxH) * 100));
-      const label = new Date(w.date + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" });
+      const label = new Date(w.date + "T12:00:00").toLocaleDateString(undefined, {
+        weekday: "short",
+      });
       const wrap = document.createElement("div");
       wrap.className = "bar-wrap";
       wrap.innerHTML = `<div class="bar ${w.isToday ? "today" : ""}" style="height:${w.hours ? h : 4}%"></div><span class="dlabel">${label}</span>`;
       bars.appendChild(wrap);
     });
 
-    // heatmap
-    const cells = L.heatmapDays(state, 119, today);
+    renderHeatmap(today);
+  }
+
+  function renderHeatmap(today) {
+    const grid = L.heatmapGrid(state, today);
     const heat = $("#heatmap");
+    const months = $("#heat-months");
+    if (!heat) return;
+
+    $("#heat-summary").textContent =
+      `${grid.showups} days shown · ${grid.totalHours}h in the last year`;
+
+    months.innerHTML = "";
+    grid.monthLabels.forEach((lbl) => {
+      const s = document.createElement("span");
+      s.textContent = lbl || "";
+      months.appendChild(s);
+    });
+
     heat.innerHTML = "";
-    cells.forEach((c) => {
-      const i = document.createElement("i");
-      i.className = `l${c.level}${c.isToday ? " today" : ""}`;
-      i.title = `${c.date}: ${c.hours}h`;
-      heat.appendChild(i);
+    grid.weeks.forEach((week) => {
+      week.forEach((c) => {
+        const i = document.createElement("i");
+        if (c.isFuture || c.level < 0) i.className = "future";
+        else i.className = `l${c.level}`;
+        if (c.isToday) i.classList.add("today");
+        const tip =
+          c.isFuture
+            ? c.date
+            : c.hours > 0
+              ? `${c.date}: ${c.hours}h`
+              : `${c.date}: no study`;
+        i.title = tip;
+        i.setAttribute("aria-label", tip);
+        i.addEventListener("click", () => {
+          $("#heat-tip").textContent = tip;
+        });
+        heat.appendChild(i);
+      });
+    });
+
+    requestAnimationFrame(() => {
+      const sc = $("#heat-scroll");
+      if (sc) sc.scrollLeft = sc.scrollWidth;
     });
   }
 
@@ -200,36 +250,106 @@
 
   function renderGarden() {
     const today = L.todayISO();
-    const goalStreak = L.goalStreak(state, today);
-    const trees = L.treeCount(goalStreak);
-    const info = L.stageInfo(state.gardenXp || 0);
+    const life = L.gardenLife(state, today);
+    const info = life.stage || L.stageInfo(state.gardenXp || 0);
+
+    if (gardenCtrl) {
+      gardenCtrl.setLife(life);
+      gardenCtrl.start();
+    }
+
     $("#garden-emoji").textContent = info.current.emoji;
     $("#garden-stage").textContent = info.current.name;
     $("#garden-xp").textContent = `${state.gardenXp || 0} XP`;
-    $("#garden-trees").textContent = `${trees} trees`;
-    $("#garden-goal-streak").textContent = `${goalStreak} complete-day streak`;
+    $("#garden-trees").textContent = `${life.tree_count} trees`;
+    $("#garden-goal-streak").textContent =
+      `${life.goal_streak} complete-day streak · ${life.mood}`;
     const pct = Math.round((info.progress || 0) * 100);
     $("#garden-progress").style.width = `${pct}%`;
     $("#garden-next").textContent = info.next
       ? `${info.xpToNext} XP to ${info.next.emoji} ${info.next.name}`
-      : "Max stage reached";
+      : "Max evolution stage reached";
+    $("#garden-hint").textContent = life.hint || "";
+    $("#garden-life").textContent = `${life.life}`;
+    $("#garden-water").textContent = `${life.water_pct}%`;
+    $("#garden-harvest").textContent = `${life.harvest_emoji}`;
+    $("#garden-foundation").textContent =
+      `${life.foundation_trees}/${life.foundation_target}`;
+
+    // week vitality dots
+    const dots = $("#garden-week-dots");
+    if (dots) {
+      dots.innerHTML =
+        '<span class="muted" style="font-size:0.78rem;font-weight:600;margin-right:4px">This week</span>';
+      (life.week_days || []).forEach((d) => {
+        const s = document.createElement("span");
+        s.className = `week-dot ${d.status}`;
+        s.title = `${d.date}: ${d.hours}h`;
+        dots.appendChild(s);
+      });
+    }
+
+    // evolution badges
+    const badges = $("#garden-badges");
+    if (badges) {
+      badges.innerHTML = "";
+      L.STAGES.forEach((stage, i) => {
+        const earned = (state.gardenXp || 0) >= stage.min_xp;
+        const span = document.createElement("span");
+        span.className = `badge ${earned ? "earned" : "locked"}`;
+        span.textContent = `${stage.emoji} ${stage.name}${earned ? "" : " 🔒"}`;
+        badges.appendChild(span);
+      });
+    }
+
+    // latest trees list
+    const list = $("#garden-tree-list");
+    if (list) {
+      const trees = life.trees || [];
+      const show = trees.slice(-8);
+      if (!show.length) {
+        list.innerHTML = `<p class="muted">Log ${life.daily_goal}h days to plant trees.</p>`;
+      } else {
+        list.innerHTML = show
+          .map((tr) => {
+            const fruit = tr.has_fruit ? "🍎 Fruit" : "🌿 Growing";
+            return `<div class="tree-row"><strong>#${tr.tree_no}</strong> · ${escapeHtml(tr.phase)} · ${escapeHtml(tr.subject)} · ${fruit}</div>`;
+          })
+          .join("");
+        if (trees.length > 8) {
+          list.innerHTML += `<p class="muted">Showing latest 8 of ${trees.length} — swipe the map for all.</p>`;
+        }
+      }
+    }
 
     const feed = $("#garden-feed");
     feed.innerHTML = "";
-    (state.gardenEvents || []).slice(0, 12).forEach((e) => {
+    (state.gardenEvents || []).slice(0, 15).forEach((e) => {
       const div = document.createElement("div");
       div.className = "list-note";
       div.innerHTML = `<div class="meta">${escapeHtml(e.date)} · +${e.xp} XP</div><div>${escapeHtml(e.message)}</div>`;
       feed.appendChild(div);
     });
     if (!(state.gardenEvents || []).length) {
-      feed.innerHTML = `<p class="muted">Log hours and finish plan items — the garden will grow.</p>`;
+      feed.innerHTML =
+        `<p class="muted">Log hours and finish plan items — the garden will grow.</p>`;
     }
+
+    const treesEl = $("#stat-trees");
+    if (treesEl) treesEl.textContent = String(life.tree_count);
   }
 
   function renderMore() {
     $("#settings-name").value = state.name || "";
     $("#settings-goal").value = state.dailyGoal || 6;
+    const s = stats(state);
+    const el = $("#storage-stats");
+    if (el) {
+      el.textContent =
+        `${s.hourDays} days with hours · ${s.planDays} plan days · ` +
+        `${s.notes} notes · ${s.events} garden events · ~${s.approxKB} KB ` +
+        `(keeps ~${Math.round(s.retentionDays / 365 * 10) / 10} years)`;
+    }
   }
 
   function render() {
@@ -315,7 +435,7 @@
         text,
         subject,
       });
-      state.notes = state.notes.slice(0, 500);
+      state.notes = state.notes.slice(0, 3000);
       $("#note-text").value = "";
       await persist();
       toast("Note saved");
@@ -408,6 +528,11 @@
       $("#install-banner")?.classList.remove("show");
     } else {
       $("#install-banner")?.classList.add("show");
+    }
+
+    const canvas = $("#garden-canvas");
+    if (canvas && window.SRTGarden) {
+      gardenCtrl = window.SRTGarden.createGarden(canvas);
     }
 
     state = await loadState();
