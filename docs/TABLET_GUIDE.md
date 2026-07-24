@@ -1,72 +1,83 @@
-# Study Tracker — tablet guide (plain English)
+# Tablet app guide (offline, local data)
 
-For someone using this on an **Android tablet** in Chrome.  
-No app store. No password. No tech setup on the tablet.
+The **tablet app** is a small installable web app in `tablet-app/`.  
+It is **not** Streamlit Cloud. Study data is stored **on the device** (browser / installed app storage).
 
----
-
-## Once (you do this for her)
-
-1. Deploy this branch (`tablet-android`) on [Streamlit Cloud](https://share.streamlit.io/)  
-   - Repo: your `study-routine-tracker`  
-   - Branch: **`tablet-android`**  
-   - Main file: **`app.py`**
-2. Copy the link that looks like: `https://something.streamlit.app`
-3. Send her that link (WhatsApp / SMS is fine).
+Works for any Android tablet (or phone) with Chrome.
 
 ---
 
-## Every day (she does this)
+## What you get
 
-1. Open the link in **Chrome** on the tablet  
-   *(or tap the home-screen icon if she saved one)*
-2. Use the tabs across the top:
-
-| Tab | What to do |
+| Feature | On the tablet |
 | --- | --- |
-| **Today** | Write what she will study. Tick boxes when done. |
-| **Hours** | Tap **+ 1 hour** or **+ 2 hours** after studying. |
-| **Notes** | One short line: what she studied. |
-| **Garden** | Optional — swipe the map for fun growth. |
-| **Break** | Optional — short game, then back to study. |
+| **Today** | Daily study plan — tick items when done |
+| **Hours** | Quick taps (+30 min, +1h, +2h, +3h) |
+| **Notes** | Short study log with subject |
+| **Heatmap** | Calendar of study days |
+| **Garden** | XP + trees grow from consistency |
+| **Install** | Chrome → Install app / Add to Home screen |
+| **Offline** | After first open/install, works without network |
+| **Backup** | Download / restore JSON from More |
 
-3. That’s it. Progress saves by itself.
-
----
-
-## Make a home-screen icon (optional, once)
-
-1. Open the link in Chrome  
-2. Tap the **three dots** ⋮ at the top right  
-3. Tap **Add to Home screen** / **Install app**  
-4. Tap **Add**  
-
-Next time she only taps the icon — no typing the link.
+The Windows laptop app (Streamlit + `Start Tracker.bat` + autostart) is separate and stays as-is.
 
 ---
 
-## Menu (☰ top left)
+## First-time setup (one PC + tablet on same Wi‑Fi)
 
-- Change her **name**  
-- Change **daily hour goal**  
-- **Download my progress** (backup file — optional)
+1. On the **Windows PC**, open the project folder.
+2. Double-click **`Start Tablet App.bat`**  
+   (or run `scripts\serve_tablet_app.ps1`).
+3. Note the tablet URL printed, e.g. `http://192.168.x.x:8765/`
+4. On the **tablet**, open that URL in **Chrome**.
+5. Tap **⋮** → **Install app** or **Add to Home screen**.
+6. Open the new home-screen icon. Progress saves on the tablet.
 
----
+After install, the PC server is only needed again if you want to update the app files.
 
-## If something looks wrong
-
-- Close the tab and open the link again  
-- Use Wi‑Fi (not a broken mobile network)  
-- Tell you — you check Streamlit Cloud is still running  
-
-**Note:** Free Streamlit Cloud apps “sleep” when unused. First open after a long break may take ~30–60 seconds. Wait; don’t spam refresh.
+Windows Firewall may ask to allow Python — allow it on **private** networks.
 
 ---
 
-## What this is *not*
+## Daily use
 
-- Not a Play Store install  
-- Not Windows autostart (that stays on your laptop only)  
-- Not the desktop sticker coach (Windows only)
+1. Open **Study Tracker** from the home screen.  
+2. **Today** — add what to study; tick boxes when finished.  
+3. **Hours** — tap how long you studied.  
+4. **Notes** — one short line.  
+5. **Garden** — optional; grows from hours and finished plan items.
 
-Your laptop install (`Start Tracker.bat`, `Install Autostart.bat`, etc.) is unchanged and stays in this repo for you.
+---
+
+## Settings & backup
+
+Open **More** (or the gear icon):
+
+- Display name  
+- Daily hour goal  
+- **Download backup** — keep a JSON copy somewhere safe  
+- **Restore backup** — load a previous JSON file  
+
+---
+
+## Troubleshooting
+
+| Problem | What to try |
+| --- | --- |
+| Tablet can’t open the URL | Same Wi‑Fi as the PC; check the IP in the server window; allow firewall |
+| No “Install app” | Use Chrome; open via `http://…` (not a file); try **Add to Home screen** |
+| Data missing after browser clear | Clearing site data wipes local storage — restore from a backup |
+| App looks old after an update | Serve the new `tablet-app/` again, open the URL once, then reopen the icon |
+
+---
+
+## For developers
+
+```bash
+cd tablet-app
+python -m http.server 8765 --bind 0.0.0.0
+```
+
+Files: `index.html`, `css/`, `js/`, `sw.js`, `manifest.webmanifest`.  
+Storage: IndexedDB + localStorage key `srt_tablet_state_v1`.

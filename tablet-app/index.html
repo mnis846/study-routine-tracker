@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d9488" />
+  <meta name="description" content="Study Routine Tracker — offline study habits, garden, and heatmap on your tablet." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Study Tracker" />
+  <title>Study Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>📚 Study Tracker</h1>
+      <p class="sub">Hi, <span id="greet-name">Student</span> · <span id="greet-date"></span></p>
+    </div>
+    <button class="icon-btn" id="btn-settings" type="button" title="Settings" aria-label="Settings">⚙️</button>
+  </header>
+
+  <main>
+    <div id="install-banner" class="install-banner">
+      <strong>Install on this tablet</strong>
+      <p class="muted" style="margin:6px 0 10px">Works offline. Study data stays on this device.</p>
+      <div class="btn-row">
+        <button class="primary" id="btn-install" type="button">Install app</button>
+        <button class="secondary" id="btn-install-help" type="button">How to install</button>
+      </div>
+    </div>
+
+    <div id="welcome" class="welcome">
+      <h3>Welcome — 3 simple steps</h3>
+      <ol>
+        <li><strong>Today</strong> — write what you will study</li>
+        <li><strong>Hours</strong> — tap how long you studied</li>
+        <li><strong>Notes</strong> — one short line about it</li>
+      </ol>
+      <p class="muted" style="margin:8px 0 10px">Your garden grows when you show up. Everything saves on this tablet.</p>
+      <button class="primary" id="welcome-ok" type="button">Got it</button>
+    </div>
+
+    <div class="hero">
+      <h2>Show up daily</h2>
+      <p>Plan · log hours · grow your study garden</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Day streak</div><div class="value" id="stat-streak">0</div></div>
+      <div class="stat"><div class="label">Daily goal</div><div class="value" id="stat-goal">6h</div></div>
+      <div class="stat"><div class="label">Today</div><div class="value" id="stat-today">0h</div></div>
+      <div class="stat"><div class="label">Garden XP</div><div class="value" id="stat-xp">0</div></div>
+    </div>
+
+    <!-- TODAY -->
+    <section id="page-today">
+      <div class="card">
+        <h3>Today's plan</h3>
+        <p class="muted" id="today-progress-label">Add items to start</p>
+        <div class="progress"><span id="today-progress" style="width:0%"></span></div>
+        <div id="today-list"></div>
+        <button class="primary" id="btn-add-item" type="button">＋ Add study item</button>
+      </div>
+    </section>
+
+    <!-- HOURS -->
+    <section id="page-hours" class="hidden">
+      <div class="card">
+        <h3>Log study time</h3>
+        <p class="muted">Today: <strong id="hours-today">0h / 6h</strong></p>
+        <div class="progress"><span id="hours-progress" style="width:0%"></span></div>
+        <p class="muted" style="margin-top:12px">Quick add (tap one)</p>
+        <div class="btn-row four">
+          <button class="secondary" type="button" data-add-hours="0.5">+ 30 min</button>
+          <button class="primary" type="button" data-add-hours="1">+ 1 hour</button>
+          <button class="primary" type="button" data-add-hours="2">+ 2 hours</button>
+          <button class="secondary" type="button" data-add-hours="3">+ 3 hours</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>This week</h3>
+        <div class="week-bars" id="week-bars"></div>
+      </div>
+      <div class="card">
+        <h3>Study calendar</h3>
+        <p class="muted">Green = days you studied. Data is only on this device.</p>
+        <div class="heat" id="heatmap"></div>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section id="page-notes" class="hidden">
+      <div class="card">
+        <h3>What did you study?</h3>
+        <label class="field" for="note-subject">Subject</label>
+        <select id="note-subject">
+          <option>General</option>
+          <option>Language / Communication</option>
+          <option>Essay / Writing</option>
+          <option>General Studies I</option>
+          <option>General Studies II</option>
+          <option>General Studies III</option>
+          <option>General Studies IV</option>
+          <option>Optional / Specialization</option>
+        </select>
+        <label class="field" for="note-text">Note</label>
+        <textarea id="note-text" placeholder="e.g. Finished chapter 3"></textarea>
+        <button class="primary" id="save-note" type="button">✅ Save note</button>
+      </div>
+      <div class="card">
+        <h3>Recent notes</h3>
+        <div id="notes-list"></div>
+      </div>
+    </section>
+
+    <!-- GARDEN -->
+    <section id="page-garden" class="hidden">
+      <div class="card">
+        <div class="garden-visual" id="garden-emoji">🌱</div>
+        <h3 style="text-align:center" id="garden-stage">First Sprout</h3>
+        <p class="muted" style="text-align:center">
+          <span id="garden-xp">0 XP</span> ·
+          <span id="garden-trees">1 trees</span> ·
+          <span id="garden-goal-streak">0 complete-day streak</span>
+        </p>
+        <div class="progress"><span id="garden-progress" style="width:0%"></span></div>
+        <p class="muted" style="text-align:center" id="garden-next"></p>
+        <p class="muted" style="margin-top:10px">
+          Complete your daily hour goal to grow trees. Every 4 complete days plants the next tree.
+          Finish plan items and log hours to earn XP.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Recent growth</h3>
+        <div id="garden-feed"></div>
+      </div>
+      <div class="card">
+        <p class="muted">Trees planted so far: <strong id="stat-trees">1</strong></p>
+      </div>
+    </section>
+
+    <!-- MORE / SETTINGS -->
+    <section id="page-more" class="hidden">
+      <div class="card">
+        <h3>Settings</h3>
+        <label class="field" for="settings-name">Display name</label>
+        <input id="settings-name" type="text" maxlength="40" placeholder="Your name" />
+        <label class="field" for="settings-goal">Daily study goal (hours)</label>
+        <input id="settings-goal" type="number" min="0.5" max="16" step="0.5" />
+        <button class="primary" id="save-settings" type="button">Save settings</button>
+      </div>
+      <div class="card">
+        <h3>Backup (on this device)</h3>
+        <p class="muted">Download a copy of your progress, or restore from a previous backup file.</p>
+        <div class="btn-row">
+          <button class="secondary" id="btn-export" type="button">Download backup</button>
+          <label class="secondary" style="display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;border:1px solid var(--border);font-weight:600;cursor:pointer">
+            Restore backup
+            <input id="import-file" type="file" accept="application/json,.json" class="hidden" />
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>About</h3>
+        <p class="muted">
+          Offline study tracker for tablets. All data stays in this browser / installed app —
+          no account and no cloud required.
+        </p>
+        <p class="muted">Windows PC users can still use the Streamlit laptop app in this same project.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav" aria-label="Main">
+    <button type="button" data-page="today" class="active"><span class="ico">📋</span>Today</button>
+    <button type="button" data-page="hours"><span class="ico">⏱️</span>Hours</button>
+    <button type="button" data-page="notes"><span class="ico">📓</span>Notes</button>
+    <button type="button" data-page="garden"><span class="ico">🌳</span>Garden</button>
+    <button type="button" data-page="more"><span class="ico">⚙️</span>More</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status"></div>
+  <div id="sheet-backdrop" class="sheet-backdrop"></div>
+
+  <div id="sheet-add-item" class="sheet">
+    <h3>Add study item</h3>
+    <label class="field" for="new-item-text">What will you study?</label>
+    <input id="new-item-text" type="text" placeholder="e.g. Chapter 5 notes" />
+    <div class="btn-row">
+      <button class="ghost" type="button" data-close-sheet>Cancel</button>
+      <button class="primary" id="save-item" type="button">Save</button>
+    </div>
+  </div>
+
+  <div id="sheet-install-help" class="sheet">
+    <h3>Install on Android</h3>
+    <ol class="muted" style="padding-left:1.2rem;line-height:1.55">
+      <li>Open this page in <strong>Chrome</strong> on the tablet.</li>
+      <li>Tap the <strong>⋮</strong> menu (top right).</li>
+      <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+      <li>Open the new icon anytime — works offline; data stays on the tablet.</li>
+    </ol>
+    <button class="primary" type="button" data-close-sheet style="margin-top:12px">Close</button>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

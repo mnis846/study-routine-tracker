@@ -10,21 +10,19 @@ A simple **Streamlit** study tracker for competitive exams or any study goal.
 - Grow a Study Garden with XP  
 - Track consistency with a GitHub-style heatmap  
 
-**No account.** On a PC, data stays local. On a tablet, open the shared web link.
+**No account.** Laptop data stays in a local SQLite file. Tablet app data stays on the device.
 
 ---
 
-## Which version?
+## Which app?
 
-| Who | Branch | How they use it |
+| Device | App | Data |
 | --- | --- | --- |
-| **You (Windows laptop)** | `main` or this branch | Full install + `Start Tracker.bat` + optional autostart — unchanged |
-| **Someone on Android tablet** | **`tablet-android`** | Open a Streamlit link in Chrome — big buttons, plain language |
+| **Windows laptop** | Streamlit (`Start Tracker.bat`, optional autostart) | Local SQLite on the PC |
+| **Android tablet** | Offline PWA in `tablet-app/` (`Start Tablet App.bat` to install) | Local on the tablet |
 
-**Tablet guide (send this to yourself when deploying):** [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
-
-> This branch (`tablet-android`) is the **easy tablet UI**.  
-> Laptop installers below stay in the repo and still work.
+Tablet guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)  
+Branch **`tablet-android`** carries the tablet PWA; laptop installers remain in the repo.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/App-Streamlit-FF4B4B)](https://streamlit.io/)
@@ -72,34 +70,28 @@ streamlit run app.py
 
 Open **http://localhost:8501** — no signup. Progress saves automatically.
 
-### Android tablet (easy mode — this branch)
+### Android tablet (offline installable app)
 
-She does **not** install Python. You host the app; she only opens a link.
+No cloud host required. The tablet app lives in **`tablet-app/`** and stores progress **on the device**.
 
-1. Deploy **branch `tablet-android`**, main file `app.py`, on [Streamlit Cloud](https://share.streamlit.io/)  
-2. Send her the `*.streamlit.app` link  
-3. She opens it in **Chrome** → optional: ⋮ → **Add to Home screen**
+1. On the PC, double-click **`Start Tablet App.bat`** (same Wi‑Fi as the tablet).  
+2. On the tablet, open the printed URL in **Chrome** (e.g. `http://192.168.x.x:8765/`).  
+3. Chrome menu **⋮** → **Install app** / **Add to Home screen**.  
+4. Use **Today · Hours · Notes · Garden** daily. Works offline after install.
 
-Day-to-day for her: tabs **Today → Hours → Notes**. Full plain-English steps: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md).
-
-Same Wi‑Fi as your PC (optional):
-
-```bash
-streamlit run app.py --server.address 0.0.0.0 --server.port 8501
-```
-
-Then on the tablet: `http://YOUR-PC-IP:8501` (`ipconfig` on Windows).
+Details: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
 
 ### Windows shortcut
 
-After the one-time install above, you can double-click **`Start Tracker.bat`**.  
+After the one-time laptop install above, double-click **`Start Tracker.bat`**.  
 It uses the project `venv` and opens the browser.
 
 | File | What it does |
 | --- | --- |
-| `Start Tracker.bat` | Start the app |
+| `Start Tracker.bat` | Start the Streamlit laptop app |
+| `Start Tablet App.bat` | Serve the tablet PWA for install / update |
 | `Tracker Control.bat` | Start / stop / status / autostart |
-| `Install Autostart.bat` | Start the app every time Windows logs in |
+| `Install Autostart.bat` | Start the laptop app every time Windows logs in |
 | `Remove Autostart.bat` | Turn off login autostart |
 | `Stop Sticker.bat` | Stop the optional desktop coach |
 
@@ -137,31 +129,25 @@ python desktop_companion.py
 
 | Where you run | Where data is saved |
 | --- | --- |
-| Your PC (recommended) | `study_routine_tracker.db` in this folder — keeps streaks |
-| Custom folder | Set env var `TRACKER_DATA_DIR` |
-| Streamlit Cloud | Temporary — can reset when the app sleeps |
+| Windows laptop (Streamlit) | `study_routine_tracker.db` in this folder |
+| Custom folder | Env var `TRACKER_DATA_DIR` |
+| Android tablet (PWA) | On-device browser storage (IndexedDB / localStorage) |
 
-The sidebar shows the database path and a **Download full backup (.db)** button.
-
----
-
-## Deploy a demo (optional)
-
-1. [share.streamlit.io](https://share.streamlit.io/) → sign in with GitHub  
-2. New app → this repo → branch **`main`** → main file **`app.py`**  
-3. Deploy and share the `*.streamlit.app` link  
-
-Cloud is fine for demos. For your own long streak, run it locally.
+Laptop: sidebar → **Download full backup (.db)**.  
+Tablet: **More** → **Download backup** (JSON).
 
 ---
 
 ## Project layout
 
 ```
-app.py           # Start here (streamlit run app.py)
-tracker/         # App code
-assets/ games/   # Stickers, CSS, break games
-requirements.txt # Core dependencies
+app.py              # Streamlit laptop entry
+tablet-app/         # Offline tablet PWA
+tracker/            # Streamlit app code
+Start Tracker.bat   # Laptop start
+Start Tablet App.bat# Serve tablet app on LAN
+assets/ games/      # Stickers, CSS, break games
+requirements.txt    # Core dependencies
 ```
 
 More detail: [docs/STRUCTURE.md](docs/STRUCTURE.md)

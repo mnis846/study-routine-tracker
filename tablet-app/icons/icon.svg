@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Study Tracker">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="55%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#g)"/>
+  <path fill="#fff" d="M128 150c40-22 80-22 128 0 48-22 88-22 128 0v196c-40-18-80-18-128 4-48-22-88-22-128-4V150z"/>
+  <path fill="#ccfbf1" d="M256 170c-40-18-72-18-104-4v168c32-12 64-12 104 4V170z"/>
+  <circle cx="340" cy="340" r="46" fill="#fef3c7"/>
+  <path d="M340 310v60M310 340h60" stroke="#0f766e" stroke-width="14" stroke-linecap="round"/>
+</svg>
