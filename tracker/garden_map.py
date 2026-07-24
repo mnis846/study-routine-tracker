@@ -45,7 +45,7 @@ def render_garden_world(garden_state, height=780):
     html = f"""
     <div class="zen-wrap">
       <canvas id="zenCanvas" class="zen-canvas"></canvas>
-      <div class="zen-hint">Drag the path · 1 tree / 4 study days · {FOUNDATION_TREE_TARGET} foundation · {MAX_GROVE_TREES} total</div>
+      <div class="zen-hint">Drag or swipe the path · 1 tree / 4 study days · {FOUNDATION_TREE_TARGET} foundation · {MAX_GROVE_TREES} total</div>
     </div>
     <style>
       .zen-wrap {{
@@ -59,8 +59,14 @@ def render_garden_world(garden_state, height=780):
         position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
         background: rgba(255,255,255,0.07); backdrop-filter: blur(12px);
         color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.15);
-        padding: 9px 20px; border-radius: 24px;
+        padding: 9px 20px; border-radius: 24px; max-width: 92%;
         font: 600 10px/1.4 'Segoe UI',system-ui,sans-serif; pointer-events: none;
+        text-align: center;
+      }}
+      @media (max-width: 900px) {{
+        .zen-wrap {{ width: 100%; margin-left: 0; border-radius: 12px; min-height: min({min_h}px, 70vh); }}
+        .zen-canvas {{ min-height: min({min_h}px, 70vh); }}
+        .zen-hint {{ font-size: 11px; padding: 8px 14px; }}
       }}
     </style>
     <script>
@@ -401,13 +407,38 @@ def render_garden_world(garden_state, height=780):
         requestAnimationFrame(frame);
       }}
 
-      cvs.addEventListener('mousedown', e => {{ drag=true; dx=e.clientX; dy=e.clientY; cvs.classList.add('grab'); }});
-      window.addEventListener('mouseup', () => {{ drag=false; cvs.classList.remove('grab'); }});
-      window.addEventListener('mousemove', e => {{
+      function startDrag(clientX, clientY) {{
+        drag = true; dx = clientX; dy = clientY; cvs.classList.add('grab');
+      }}
+      function moveDrag(clientX, clientY) {{
         if (!drag) return;
-        panX += e.clientX - dx; panY += e.clientY - dy; dx=e.clientX; dy=e.clientY;
+        panX += clientX - dx; panY += clientY - dy; dx = clientX; dy = clientY;
         clampPan();
-      }});
+      }}
+      function endDrag() {{
+        drag = false; cvs.classList.remove('grab');
+      }}
+
+      cvs.addEventListener('mousedown', e => {{ startDrag(e.clientX, e.clientY); }});
+      window.addEventListener('mouseup', endDrag);
+      window.addEventListener('mousemove', e => {{ moveDrag(e.clientX, e.clientY); }});
+
+      // Android / iPad tablets: finger pan
+      cvs.addEventListener('touchstart', e => {{
+        if (!e.touches.length) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        startDrag(t.clientX, t.clientY);
+      }}, {{ passive: false }});
+      cvs.addEventListener('touchmove', e => {{
+        if (!e.touches.length) return;
+        e.preventDefault();
+        const t = e.touches[0];
+        moveDrag(t.clientX, t.clientY);
+      }}, {{ passive: false }});
+      cvs.addEventListener('touchend', endDrag);
+      cvs.addEventListener('touchcancel', endDrag);
+
       resize();
       if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(cvs.parentElement);
       setTimeout(resize, 400);

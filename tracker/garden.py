@@ -188,8 +188,8 @@ GARDEN_CSS = """
 """
 
 
-def render_interactive_garden(garden_state, height=760, **_kwargs):
-    """Cinematic study jungle — full-width draggable map from garden_map."""
+def render_interactive_garden(garden_state, height=560, **_kwargs):
+    """Cinematic study jungle — full-width draggable map (tablet-friendly height)."""
     from tracker.garden_map import render_garden_world
 
     render_garden_world(garden_state, height=height)

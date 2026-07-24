@@ -1,12 +1,14 @@
-"""Shared mobile-first CSS for the Study Routine Tracker."""
+"""Shared mobile / tablet CSS for the Study Routine Tracker."""
 
 MOBILE_CSS = """
 <style>
-    /* Touch-friendly controls */
+    /* ---- Base touch-friendly controls ---- */
     .stButton button {
-        min-height: 2.75rem;
+        min-height: 2.85rem;
         font-size: 0.95rem;
         border-radius: 12px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
     }
     .stCheckbox label { min-height: 2.5rem; }
     div[data-testid="stFormSubmitButton"] button {
@@ -14,21 +16,23 @@ MOBILE_CSS = """
         font-weight: 600;
     }
 
-    /* App-like spacing on narrow screens (desktop uses app_styles.py) */
-    @media (max-width: 768px) {
-        .block-container {
-            padding-top: 1rem;
-            max-width: 720px;
-        }
+    /* 16px inputs prevent Android Chrome auto-zoom on focus */
+    .stTextInput input,
+    .stTextArea textarea,
+    .stNumberInput input,
+    .stSelectbox [data-baseweb="select"],
+    .stDateInput input {
+        font-size: 16px !important;
     }
 
-    /* Scrollable tabs on narrow screens */
+    /* Scrollable tabs (phone + tablet) */
     div[data-testid="stTabs"] div[role="tablist"] {
         overflow-x: auto;
         overflow-y: hidden;
         flex-wrap: nowrap;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        gap: 0.2rem;
     }
     div[data-testid="stTabs"] div[role="tablist"]::-webkit-scrollbar {
         display: none;
@@ -36,6 +40,8 @@ MOBILE_CSS = """
     div[data-testid="stTabs"] button[role="tab"] {
         white-space: nowrap;
         flex-shrink: 0;
+        min-height: 2.6rem;
+        touch-action: manipulation;
     }
 
     /* Target cards */
@@ -57,7 +63,6 @@ MOBILE_CSS = """
         word-break: break-word;
     }
 
-    /* Compact header chips */
     .chip-row {
         display: flex;
         flex-wrap: wrap;
@@ -65,7 +70,6 @@ MOBILE_CSS = """
         margin-bottom: 0.75rem;
     }
 
-    /* Quick stats row */
     .quick-stat {
         background: #F7FAFC;
         border-radius: 12px;
@@ -84,63 +88,126 @@ MOBILE_CSS = """
         color: #1E3A5F;
     }
 
-    @media (max-width: 768px) {
+    /* Safe area for notched Android / tablets */
+    .block-container {
+        padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+        padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* Heatmap: always horizontal-scroll friendly */
+    .showup-weeks-col,
+    .gh-graph,
+    .gh-wrap {
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+    .gh-cell {
+        transition: transform 0.1s ease;
+    }
+
+    /* iframe embeds (garden / games) */
+    iframe {
+        max-width: 100% !important;
+        border: none;
+    }
+
+    /* ---- Tablet & phone (portrait or narrow) ---- */
+    @media (max-width: 1024px) {
+        .block-container {
+            padding-top: 0.85rem !important;
+            max-width: 100% !important;
+        }
+
+        .app-hero {
+            padding: 1.05rem 1.15rem !important;
+            border-radius: 14px !important;
+        }
+        .app-hero-title { font-size: 1.25rem !important; }
+        .app-hero-greeting { font-size: 0.92rem !important; }
+        .app-hero-motto { font-size: 0.82rem !important; }
+
         .main-header { font-size: 1.35rem !important; }
         .date-time { font-size: 0.88rem !important; }
-        .stat-chip {
-            font-size: 0.72rem;
-            padding: 0.18rem 0.55rem;
-            margin-right: 0;
+
+        div[data-testid="stMetric"] {
+            padding: 0.55rem 0.7rem !important;
         }
-        .block-container {
-            padding-left: 0.65rem !important;
-            padding-right: 0.65rem !important;
-            padding-top: 0.75rem !important;
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            font-size: 1.15rem !important;
         }
+
+        div[data-testid="stTabs"] button[role="tab"] {
+            font-size: 0.8rem;
+            padding: 0.45rem 0.65rem;
+        }
+
+        /* Soft wrap for wide metric/button rows; compact rows stay readable */
+        div[data-testid="stHorizontalBlock"] {
+            gap: 0.45rem !important;
+        }
+
         .next-test-card {
             padding: 1rem !important;
         }
         .next-test-card .test-title {
             font-size: 1.1rem !important;
         }
-        .next-test-card .test-date {
-            font-size: 0.88rem !important;
-            line-height: 1.4;
-        }
-        div[data-testid="stTabs"] button[role="tab"] {
-            font-size: 0.78rem;
-            padding: 0.45rem 0.55rem;
-        }
-        .garden-compact {
-            flex-direction: column;
-            text-align: center;
-            padding: 0.85rem !important;
-        }
-        .garden-compact-tree {
-            width: 120px;
-            margin: 0 auto;
-        }
+
+        .garden-compact,
         .garden-hero {
             flex-direction: column;
             text-align: center;
-            padding: 1rem !important;
+            padding: 0.9rem !important;
             gap: 0.75rem !important;
         }
+        .garden-compact-tree,
         .garden-visual {
-            width: 160px;
+            width: 140px;
             margin: 0 auto;
         }
         .garden-stage-title { font-size: 1.2rem !important; }
         .badge { font-size: 0.72rem; }
+
         section[data-testid="stSidebar"] {
             min-width: 16rem;
         }
+
+        /* Plotly: allow touch pan/zoom without page scroll fight */
+        .js-plotly-plot .plotly {
+            touch-action: pan-y;
+        }
+
+        .coach-card {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
     }
 
-    @media (max-width: 480px) {
+    /* ---- Phones ---- */
+    @media (max-width: 640px) {
         .main-header { font-size: 1.2rem !important; }
         .quick-stat-value { font-size: 1rem; }
         .target-card { padding: 0.75rem 0.85rem; }
+        .app-hero-title { font-size: 1.15rem !important; }
+
+        div[data-testid="stTabs"] button[role="tab"] {
+            font-size: 0.74rem;
+            padding: 0.4rem 0.5rem;
+        }
+
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            font-size: 1.05rem !important;
+        }
+    }
+
+    /* Prefer reduced motion on low-power tablets */
+    @media (prefers-reduced-motion: reduce) {
+        .stButton > button,
+        .gh-cell {
+            transition: none !important;
+        }
     }
 </style>
 """

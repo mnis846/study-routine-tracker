@@ -58,6 +58,28 @@ streamlit run app.py
 
 Open **http://localhost:8501** — no signup. Progress saves automatically.
 
+### Android tablet (Chrome)
+
+This is a **web app**. On an Android tablet, open it in **Chrome** (or any modern browser) — no Play Store install.
+
+**Easiest for someone else:** deploy to [Streamlit Community Cloud](https://share.streamlit.io/) (see below) and send them the `*.streamlit.app` link. They can **Add to Home screen** for an app-like icon.
+
+**Same Wi‑Fi as your PC:** start the app so it listens on the network:
+
+```bash
+streamlit run app.py --server.address 0.0.0.0 --server.port 8501
+```
+
+On the tablet, open `http://YOUR-PC-IP:8501` (find the PC IP in Windows with `ipconfig`).  
+Firewall may ask to allow Python — allow it on private networks.
+
+**Tablet tips**
+
+- Use the **☰** menu (top-left) for name, daily goal, and backup  
+- Swipe horizontally on the **Targets / Hours / Logbook / Garden / Break** tabs  
+- **Drag or swipe** the Study Garden map  
+- Break games work with tap (and on-screen controls)
+
 ### Windows shortcut
 
 After the one-time install above, you can double-click **`Start Tracker.bat`**.  
