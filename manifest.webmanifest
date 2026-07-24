@@ -1,0 +1,39 @@
+{
+  "name": "Study Routine Tracker",
+  "short_name": "Study Tracker",
+  "description": "Offline study planner with hours, notes, heatmap, and garden \u2014 data stays on this device.",
+  "id": "/study-routine-tracker/",
+  "start_url": "/study-routine-tracker/index.html",
+  "scope": "/study-routine-tracker/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f0f4ff",
+  "theme_color": "#0d9488",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/study-routine-tracker/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/study-routine-tracker/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/study-routine-tracker/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/study-routine-tracker/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

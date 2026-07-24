@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/study-routine-tracker/">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d9488" />
+  <meta name="description" content="Study Routine Tracker — offline study habits, garden, and heatmap on your tablet." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Study Tracker" />
+  <title>Study Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>📚 Study Tracker</h1>
+      <p class="sub">Hi, <span id="greet-name">Student</span> · <span id="greet-date"></span></p>
+    </div>
+    <button class="icon-btn" id="btn-settings" type="button" title="Settings" aria-label="Settings">⚙️</button>
+  </header>
+
+  <main>
+    <div id="install-banner" class="install-banner show">
+      <strong>Install Study Tracker on this device</strong>
+      <p class="muted" style="margin:6px 0 10px">
+        Best option: install the Android app (APK). Works offline. Data stays on this phone/tablet.
+      </p>
+      <a class="primary" id="btn-download-apk" href="https://github.com/mnis846/study-routine-tracker/releases/download/android-latest/StudyTracker.apk" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:48px;border-radius:14px;margin-bottom:8px">
+        Download Android app (APK)
+      </a>
+      <div class="btn-row">
+        <button class="secondary" id="btn-install" type="button">Browser install tips</button>
+        <button class="ghost" id="btn-install-help" type="button">Help</button>
+      </div>
+      <button class="ghost" id="btn-dismiss-install" type="button" style="margin-top:8px">I'm already installed — hide</button>
+    </div>
+
+    <div id="welcome" class="welcome">
+      <h3>Welcome — 3 simple steps</h3>
+      <ol>
+        <li><strong>Today</strong> — write what you will study</li>
+        <li><strong>Hours</strong> — tap how long you studied</li>
+        <li><strong>Notes</strong> — one short line about it</li>
+      </ol>
+      <p class="muted" style="margin:8px 0 10px">Your garden grows when you show up. Everything saves on this tablet.</p>
+      <button class="primary" id="welcome-ok" type="button">Got it</button>
+    </div>
+
+    <div class="hero">
+      <h2>Show up daily</h2>
+      <p>Plan · log hours · grow your study garden</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Day streak</div><div class="value" id="stat-streak">0</div></div>
+      <div class="stat"><div class="label">Daily goal</div><div class="value" id="stat-goal">6h</div></div>
+      <div class="stat"><div class="label">Today</div><div class="value" id="stat-today">0h</div></div>
+      <div class="stat"><div class="label">Garden XP</div><div class="value" id="stat-xp">0</div></div>
+    </div>
+
+    <!-- TODAY -->
+    <section id="page-today">
+      <div class="card">
+        <h3>Today's plan</h3>
+        <p class="muted" id="today-progress-label">Add items to start</p>
+        <div class="progress"><span id="today-progress" style="width:0%"></span></div>
+        <div id="today-list"></div>
+        <button class="primary" id="btn-add-item" type="button">＋ Add study item</button>
+      </div>
+    </section>
+
+    <!-- HOURS -->
+    <section id="page-hours" class="hidden">
+      <div class="card">
+        <h3>Log study time</h3>
+        <p class="muted">Today: <strong id="hours-today">0h / 6h</strong> · max 10h/day</p>
+        <div class="progress"><span id="hours-progress" style="width:0%"></span></div>
+        <p class="muted" style="margin-top:12px">Quick add</p>
+        <div class="btn-row four">
+          <button class="secondary" type="button" data-add-hours="0.5">+ 30 min</button>
+          <button class="primary" type="button" data-add-hours="1">+ 1 hour</button>
+          <button class="primary" type="button" data-add-hours="2">+ 2 hours</button>
+          <button class="secondary" type="button" data-add-hours="3">+ 3 hours</button>
+        </div>
+        <p class="muted" style="margin-top:12px">Fix a mistake</p>
+        <div class="btn-row four">
+          <button class="secondary" type="button" data-sub-hours="0.5">− 30 min</button>
+          <button class="secondary" type="button" data-sub-hours="1">− 1 hour</button>
+          <button class="ghost" type="button" id="btn-edit-today-hours">Set exact…</button>
+          <button class="danger" type="button" id="btn-clear-today-hours">Clear today</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Recent days</h3>
+        <p class="muted">Tap a day to edit or clear hours you added by mistake.</p>
+        <div id="recent-hours-list"></div>
+      </div>
+      <div class="card">
+        <h3>This week</h3>
+        <div class="week-bars" id="week-bars"></div>
+      </div>
+      <div class="card heat-card">
+        <div class="heat-head">
+          <div>
+            <h3>Study calendar</h3>
+            <p class="muted" id="heat-summary">Past year of show-up days</p>
+          </div>
+          <div class="heat-legend" aria-hidden="true">
+            <span>Less</span>
+            <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i>
+            <span>More</span>
+          </div>
+        </div>
+        <div class="heat-scroll" id="heat-scroll">
+          <div class="heat-months" id="heat-months"></div>
+          <div class="heat-body">
+            <div class="heat-dow" aria-hidden="true">
+              <span></span><span>M</span><span></span><span>W</span><span></span><span>F</span><span></span>
+            </div>
+            <div class="heat-grid" id="heatmap"></div>
+          </div>
+        </div>
+        <p class="muted heat-tip" id="heat-tip">Tap a square for details · scroll sideways for the full year</p>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section id="page-notes" class="hidden">
+      <div class="card">
+        <h3>What did you study?</h3>
+        <label class="field" for="note-subject">Subject</label>
+        <select id="note-subject">
+          <option>General</option>
+          <option>Language / Communication</option>
+          <option>Essay / Writing</option>
+          <option>General Studies I</option>
+          <option>General Studies II</option>
+          <option>General Studies III</option>
+          <option>General Studies IV</option>
+          <option>Optional / Specialization</option>
+        </select>
+        <label class="field" for="note-text">Note</label>
+        <textarea id="note-text" placeholder="e.g. Finished chapter 3"></textarea>
+        <button class="primary" id="save-note" type="button">✅ Save note</button>
+      </div>
+      <div class="card">
+        <h3>Recent notes</h3>
+        <div id="notes-list"></div>
+      </div>
+    </section>
+
+    <!-- GARDEN -->
+    <section id="page-garden" class="hidden">
+      <div class="card garden-map-card">
+        <canvas id="garden-canvas" class="garden-canvas" width="360" height="320" aria-label="Study garden map"></canvas>
+        <p class="muted garden-hint" id="garden-hint">Swipe the map · 4 complete study days plant a new tree</p>
+      </div>
+      <div class="card">
+        <div class="garden-stage-row">
+          <div class="garden-visual" id="garden-emoji">🌱</div>
+          <div>
+            <h3 id="garden-stage" style="margin:0 0 4px">First Sprout</h3>
+            <p class="muted" style="margin:0">
+              <span id="garden-xp">0 XP</span> ·
+              <span id="garden-trees">1 trees</span>
+            </p>
+            <p class="muted" style="margin:4px 0 0" id="garden-goal-streak">0 complete-day streak</p>
+          </div>
+        </div>
+        <div class="progress"><span id="garden-progress" style="width:0%"></span></div>
+        <p class="muted" id="garden-next"></p>
+        <div class="week-dots" id="garden-week-dots"></div>
+        <div class="stats" style="margin-top:10px;margin-bottom:0">
+          <div class="stat"><div class="label">Life</div><div class="value" id="garden-life">—</div></div>
+          <div class="stat"><div class="label">Water today</div><div class="value" id="garden-water">0%</div></div>
+          <div class="stat"><div class="label">Harvest</div><div class="value" id="garden-harvest">🌱</div></div>
+          <div class="stat"><div class="label">Foundation</div><div class="value" id="garden-foundation">1/55</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Evolution path</h3>
+        <div class="badge-grid" id="garden-badges"></div>
+      </div>
+      <div class="card">
+        <h3>Latest trees</h3>
+        <div id="garden-tree-list"></div>
+      </div>
+      <div class="card">
+        <h3>Recent growth</h3>
+        <div id="garden-feed"></div>
+      </div>
+    </section>
+
+    <!-- MORE / SETTINGS -->
+    <section id="page-more" class="hidden">
+      <div class="card">
+        <h3>Settings</h3>
+        <label class="field" for="settings-name">Display name</label>
+        <input id="settings-name" type="text" maxlength="40" placeholder="Your name" />
+        <label class="field" for="settings-goal">Daily study goal (hours, max 10)</label>
+        <input id="settings-goal" type="number" min="0.5" max="10" step="0.5" />
+        <button class="primary" id="save-settings" type="button">Save settings</button>
+      </div>
+      <div class="card">
+        <h3>Backup (on this device)</h3>
+        <p class="muted">Download a copy of your progress, or restore from a previous backup file.</p>
+        <div class="btn-row">
+          <button class="secondary" id="btn-export" type="button">Download backup</button>
+          <label class="secondary" style="display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;border:1px solid var(--border);font-weight:600;cursor:pointer">
+            Restore backup
+            <input id="import-file" type="file" accept="application/json,.json" class="hidden" />
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Storage on this device</h3>
+        <p class="muted" id="storage-stats">Loading…</p>
+        <p class="muted">Keeps about 2 years of daily hours &amp; plans, thousands of notes, and garden history — all offline.</p>
+      </div>
+      <div class="card">
+        <h3>About</h3>
+        <p class="muted">
+          Offline study tracker for phones &amp; tablets. Data stays in this app —
+          no account required.
+        </p>
+        <p class="muted">Windows PC users can still use the Streamlit laptop app in this same project.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav" aria-label="Main">
+    <button type="button" data-page="today" class="active"><span class="ico">📋</span>Today</button>
+    <button type="button" data-page="hours"><span class="ico">⏱️</span>Hours</button>
+    <button type="button" data-page="notes"><span class="ico">📓</span>Notes</button>
+    <button type="button" data-page="garden"><span class="ico">🌳</span>Garden</button>
+    <button type="button" data-page="more"><span class="ico">⚙️</span>More</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status"></div>
+  <div id="sheet-backdrop" class="sheet-backdrop"></div>
+
+  <div id="sheet-add-item" class="sheet">
+    <h3>Add study item</h3>
+    <label class="field" for="new-item-text">What will you study?</label>
+    <input id="new-item-text" type="text" placeholder="e.g. Chapter 5 notes" />
+    <div class="btn-row">
+      <button class="ghost" type="button" data-close-sheet>Cancel</button>
+      <button class="primary" id="save-item" type="button">Save</button>
+    </div>
+  </div>
+
+  <div id="sheet-edit-hours" class="sheet">
+    <h3 id="edit-hours-title">Edit hours</h3>
+    <p class="muted" id="edit-hours-date"></p>
+    <label class="field" for="edit-hours-value">Hours (0–10)</label>
+    <input id="edit-hours-value" type="number" min="0" max="10" step="0.25" />
+    <label class="field" for="edit-hours-notes">Note (optional)</label>
+    <input id="edit-hours-notes" type="text" placeholder="e.g. Mixed revision" maxlength="120" />
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-hours-clear">Clear day</button>
+      <button class="primary" type="button" id="edit-hours-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
+  </div>
+
+  <div id="sheet-edit-note" class="sheet">
+    <h3>Edit note</h3>
+    <label class="field" for="edit-note-subject">Subject</label>
+    <select id="edit-note-subject">
+      <option>General</option>
+      <option>Language / Communication</option>
+      <option>Essay / Writing</option>
+      <option>General Studies I</option>
+      <option>General Studies II</option>
+      <option>General Studies III</option>
+      <option>General Studies IV</option>
+      <option>Optional / Specialization</option>
+    </select>
+    <label class="field" for="edit-note-text">Note</label>
+    <textarea id="edit-note-text" placeholder="What you studied"></textarea>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-note-delete">Delete note</button>
+      <button class="primary" type="button" id="edit-note-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
+  </div>
+
+  <div id="sheet-edit-item" class="sheet">
+    <h3>Edit plan item</h3>
+    <label class="field" for="edit-item-text">What will you study?</label>
+    <input id="edit-item-text" type="text" placeholder="e.g. Chapter 5 notes" />
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-item-delete">Delete</button>
+      <button class="primary" type="button" id="edit-item-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
+  </div>
+
+  <div id="sheet-install-help" class="sheet">
+    <h3>Install on Android</h3>
+    <p class="muted"><strong>Recommended — real app file (APK)</strong></p>
+    <ol class="muted" style="padding-left:1.2rem;line-height:1.55">
+      <li>Tap <strong>Download Android app (APK)</strong>.</li>
+      <li>Open the file when download finishes.</li>
+      <li>If asked, allow installs from Chrome / Files.</li>
+      <li>Tap <strong>Install</strong>, then open <strong>Study Tracker</strong>.</li>
+    </ol>
+    <p class="muted" style="margin-top:12px"><strong>Browser shortcut (optional)</strong></p>
+    <ol class="muted" style="padding-left:1.2rem;line-height:1.55">
+      <li>In Chrome, tap <strong>⋮</strong> (top right).</li>
+      <li>Tap <strong>Add to Home screen</strong> or <strong>Install app</strong> if shown.</li>
+    </ol>
+    <p class="muted" style="margin-top:12px">
+      APK download page:<br />
+      <a href="https://github.com/mnis846/study-routine-tracker/releases/tag/android-latest">github.com/.../android-latest</a>
+    </p>
+    <button class="primary" type="button" data-close-sheet style="margin-top:12px">Close</button>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/garden.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
