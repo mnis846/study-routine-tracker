@@ -72,15 +72,17 @@ Open **http://localhost:8501** — no signup. Progress saves automatically.
 
 ### Android phone or tablet (no laptop required)
 
-Students with **only a phone or tablet** install from a normal HTTPS link — no PC, no Streamlit.
+Students with **only a phone or tablet** — no PC, no Streamlit:
 
-1. Open **https://mnis846.github.io/study-routine-tracker/** in **Chrome**  
-   *(after GitHub Pages is enabled once — see [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md))*  
+1. Open this in **Chrome**:  
+   **https://cdn.jsdelivr.net/gh/mnis846/study-routine-tracker@tablet-android/tablet-app/index.html**  
 2. **⋮** → **Install app** / **Add to Home screen**  
-3. Use **Today · Hours · Notes · Garden** — data stays **on that device**, works offline  
+3. Study with **Today · Hours · Notes · Garden** — data stays **on that device**
 
-Optional (home Wi‑Fi + PC): double-click **`Start Tablet App.bat`**, open the printed LAN URL on the tablet.
+Optional short URL (after Pages uses the `gh-pages` branch):  
+https://mnis846.github.io/study-routine-tracker/
 
+Optional LAN from a PC: `Start Tablet App.bat`  
 Full guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
 
 ### Windows shortcut

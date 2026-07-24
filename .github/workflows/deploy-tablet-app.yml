@@ -1,6 +1,12 @@
-# Publish tablet-app/ as a static site (GitHub Pages).
-# Phone/tablet-only students open the HTTPS link in Chrome and install — no laptop needed.
-# Data still stores on the device, not on GitHub.
+# Publish tablet-app/ to the gh-pages branch (static site for phones/tablets).
+# Study data is NOT hosted — only the app shell (HTML/JS/CSS). Progress stays on-device.
+#
+# One-time (repo Settings → Pages):
+#   Source: Deploy from a branch
+#   Branch: gh-pages / (root)
+#
+# Student link: https://mnis846.github.io/study-routine-tracker/
+# Instant CDN link (no Pages setup): see docs/TABLET_GUIDE.md
 
 name: Deploy tablet app
 
@@ -13,43 +19,30 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: tablet-app-pages
+  group: tablet-app-gh-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build static site
+      - name: Prepare site
         run: |
           mkdir -p _site
           cp -a tablet-app/. _site/
           touch _site/.nojekyll
-          # Helpful landing note for the published URL root
-          if [ ! -f _site/index.html ]; then
-            echo "tablet-app/index.html missing" >&2
-            exit 1
-          fi
+          test -f _site/index.html
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: _site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          force_orphan: true
+          enable_jekyll: false

@@ -5,8 +5,10 @@ Installable study tracker for Android phones and tablets.
 
 ## Phone-only (no laptop)
 
-Published URL (after GitHub Pages is on):
+**Works now (CDN):**  
+https://cdn.jsdelivr.net/gh/mnis846/study-routine-tracker@tablet-android/tablet-app/index.html
 
+**Short site URL** (Pages → branch `gh-pages`):  
 https://mnis846.github.io/study-routine-tracker/
 
 Chrome → Install app / Add to Home screen. Progress stays on the device.
