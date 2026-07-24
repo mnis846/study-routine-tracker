@@ -361,30 +361,55 @@
       b.addEventListener("click", closeSheets)
     );
 
+    // Chrome may or may not fire this — never rely on it alone.
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredInstall = e;
-      $("#install-banner").classList.add("show");
+      $("#install-banner")?.classList.add("show");
     });
 
-    $("#btn-install").addEventListener("click", async () => {
+    $("#btn-install")?.addEventListener("click", async () => {
       if (deferredInstall) {
         deferredInstall.prompt();
         const choice = await deferredInstall.userChoice;
-        if (choice.outcome === "accepted") toast("Installed on this tablet");
+        if (choice.outcome === "accepted") {
+          toast("Added to home screen");
+          localStorage.setItem("srt_install_dismissed", "1");
+          $("#install-banner")?.classList.remove("show");
+        }
         deferredInstall = null;
-        $("#install-banner").classList.remove("show");
       } else {
-        toast("Use browser menu → Add to Home screen");
+        openSheet("#sheet-install-help");
       }
     });
 
-    $("#btn-install-help").addEventListener("click", () => {
+    $("#btn-install-help")?.addEventListener("click", () => {
       openSheet("#sheet-install-help");
+    });
+
+    $("#btn-dismiss-install")?.addEventListener("click", () => {
+      localStorage.setItem("srt_install_dismissed", "1");
+      $("#install-banner")?.classList.remove("show");
     });
   }
 
+  function isStandalone() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true ||
+      document.documentElement.getAttribute("data-packaged") === "capacitor"
+    );
+  }
+
   async function boot() {
+    if (isStandalone()) {
+      document.documentElement.classList.add("standalone");
+    } else if (localStorage.getItem("srt_install_dismissed") === "1") {
+      $("#install-banner")?.classList.remove("show");
+    } else {
+      $("#install-banner")?.classList.add("show");
+    }
+
     state = await loadState();
     const rewards = L.processCheckin(state);
     if (rewards.length) await persist();
@@ -392,14 +417,18 @@
     setPage("today");
     if (rewards.length) toast("Welcome back · garden check-in");
 
-    if ("serviceWorker" in navigator) {
+    // Service worker only helps on a real HTTPS origin (e.g. GitHub Pages).
+    // CDNs often break installability — APK is the reliable path.
+    if ("serviceWorker" in navigator && !isStandalone()) {
       try {
-        const swUrl = new URL("sw.js", window.location.href);
+        const baseEl = document.querySelector("base");
+        const baseHref = baseEl?.href || window.location.href;
+        const swUrl = new URL("sw.js", baseHref);
         await navigator.serviceWorker.register(swUrl.href, {
-          scope: new URL("./", window.location.href).pathname,
+          scope: new URL("./", baseHref).pathname,
         });
       } catch {
-        /* offline SW optional when opened as file:// */
+        /* optional */
       }
     }
   }

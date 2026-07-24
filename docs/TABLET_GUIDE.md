@@ -1,119 +1,118 @@
-# Phone / tablet app guide
+# Phone / tablet install guide
 
-Offline installable study app in `tablet-app/`.  
-**Made for students who only have an Android phone or tablet** (no laptop).
+**Problem we solve:** students with only an Android phone or tablet need a real install that works. Browser “Install app” prompts are unreliable (Chrome often hides them on CDNs / misconfigured Pages).
 
-Study data is stored **on that device** (browser / installed app). Not Streamlit Cloud.
+**Robust solution:** a real **Android APK** (Capacitor WebView app) with **local on-device storage**.
+
+Laptop Streamlit install is separate and unchanged.
 
 ---
 
-## What you get
+## Recommended: install the Android APK
 
-| Feature | On the device |
+### Direct download
+
+**https://github.com/mnis846/study-routine-tracker/releases/download/android-latest/StudyTracker.apk**
+
+### Release page
+
+**https://github.com/mnis846/study-routine-tracker/releases/tag/android-latest**
+
+### Steps (student)
+
+1. Open the download link in **Chrome** on the phone/tablet.  
+2. Tap **Download**.  
+3. Open the file (`StudyTracker.apk`).  
+4. If Android warns about unknown apps → **Settings** → allow for Chrome/Files → back → **Install**.  
+5. Open **Study Tracker**.  
+
+Data (today’s plan, hours, notes, garden) is stored **on that device only**.
+
+No laptop. No Streamlit. No Play Store account required.
+
+---
+
+## What is in the app
+
+| Feature | Works offline |
 | --- | --- |
-| **Today** | Daily study plan — tick items when done |
-| **Hours** | Quick taps (+30 min, +1h, +2h, +3h) |
-| **Notes** | Short study log with subject |
-| **Heatmap** | Calendar of study days |
-| **Garden** | XP + trees grow from consistency |
-| **Install** | Chrome → Install app / Add to Home screen |
-| **Offline** | After first open, can work without network |
-| **Backup** | Download / restore JSON from **More** |
-
-Windows laptop Streamlit app is optional and separate.
+| Today’s plan + checkboxes | Yes |
+| Quick hour logging | Yes |
+| Notes / log | Yes |
+| Heatmap calendar | Yes |
+| Garden XP + trees | Yes |
+| Backup JSON import/export | Yes |
 
 ---
 
-## Install with only a phone or tablet
+## For the repo owner
 
-No PC. Open **Chrome** on the phone/tablet and use one of these links:
+### Build / update the APK
 
-### Link 1 — works immediately (CDN)
+GitHub Action: `.github/workflows/build-android-apk.yml`
 
-**https://cdn.jsdelivr.net/gh/mnis846/study-routine-tracker@tablet-android/tablet-app/index.html**
+- Runs on pushes to `tablet-android` (when `tablet-app/` or `mobile/` change)  
+- Or **Actions → Build Android APK → Run workflow**  
+- Publishes / updates release tag **`android-latest`** with `StudyTracker.apk`
 
-### Link 2 — short site URL (after Pages points at `gh-pages`)
+Share the stable download URL above after the first green run.
 
-**https://mnis846.github.io/study-routine-tracker/**
+### Optional web copy (not the primary install)
+
+Workflow `deploy-tablet-app.yml` publishes static files to branch **`gh-pages`**.
+
+If you want a short web URL:
+
+1. Repo **Settings → Pages**  
+2. Source: **Deploy from a branch**  
+3. Branch: **`gh-pages`** / **/** (root)  
 
 Then:
 
-1. Wait for the app to load.  
-2. Tap **⋮** → **Install app** or **Add to Home screen**.  
-3. Open the new icon to study.  
-4. Progress saves on **this phone/tablet only**.
+- App: `https://mnis846.github.io/study-routine-tracker/`  
+- Get page: `https://mnis846.github.io/study-routine-tracker/get.html`  
 
-Share Link 1 (or Link 2) by WhatsApp/SMS — that’s the whole install for a student with no laptop.
+**Important:** until Pages is set to `gh-pages`, the short URL may still show the old README — use the **APK** link instead.
 
 ---
 
-## One-time: nicer short URL (repo owner)
+## Why not rely on PWA install only?
 
-GitHub Actions publishes the app to the **`gh-pages`** branch on each update.
-
-1. Open the repo on GitHub (any browser, including phone).  
-2. **Settings** → **Pages**  
-3. **Build and deployment** → Source: **Deploy from a branch**  
-4. Branch: **`gh-pages`** / folder **`/` (root)** → Save  
-
-After a minute, Link 2 above serves the tablet app (not the old README page).
-
-Workflow: `.github/workflows/deploy-tablet-app.yml`
-
----
-
-## Optional: home Wi‑Fi from a PC
-
-Only if someone has the project on Windows:
-
-1. Double-click **`Start Tablet App.bat`**  
-2. Open the printed URL on the phone/tablet (same Wi‑Fi)  
-3. Install as above  
-
-Not needed when Link 1 or Link 2 works.
-
----
-
-## Daily use
-
-1. Open **Study Tracker** from the home screen.  
-2. **Today** — plan; tick when finished.  
-3. **Hours** — tap study time.  
-4. **Notes** — one short line.  
-5. **Garden** — grows from hours + finished items.
-
----
-
-## Settings & backup
-
-**More** (or gear):
-
-- Display name  
-- Daily hour goal  
-- **Download backup** — save JSON to Files / Drive  
-- **Restore backup** — if browser data was cleared  
-
-Clearing Chrome site data wipes local progress — keep occasional backups.
-
----
-
-## Troubleshooting
-
-| Problem | What to try |
+| Approach | Reality on Android |
 | --- | --- |
-| Link won’t open | Use Chrome; check mobile data / Wi‑Fi |
-| CDN link is old | Wait a few minutes after a new push, or append `?v=2` once |
-| No “Install app” | **⋮ → Add to Home screen** still works |
-| Short URL shows README | Owner: set Pages branch to **`gh-pages`** (see above) |
-| Data missing | Restore a JSON backup |
+| jsDelivr / random CDN | Often **no** Install prompt (SW / installability fails) |
+| GitHub Pages pointing at README | Not the app at all |
+| “Add to Home screen” only | Easy to miss; not always offline-complete |
+| **APK (Capacitor)** | Real install icon, offline WebView, local storage — **reliable** |
+
+---
+
+## Laptop users (unchanged)
+
+```text
+Start Tracker.bat
+Install Autostart.bat
+```
+
+Streamlit + SQLite on the PC.
 
 ---
 
 ## Developers
 
-```bash
-cd tablet-app
-python -m http.server 8765 --bind 0.0.0.0
+```text
+tablet-app/     # web UI + local IndexedDB storage
+mobile/         # Capacitor packaging (www generated in CI)
+.github/workflows/build-android-apk.yml
 ```
 
-Storage: IndexedDB + localStorage (`srt_tablet_state_v1`).
+Local Capacitor (needs Node + Android SDK):
+
+```bash
+cd mobile
+npm install
+npm run sync-web
+npx cap add android   # first time
+npx cap sync android
+cd android && ./gradlew assembleDebug
+```

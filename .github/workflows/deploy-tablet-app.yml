@@ -1,18 +1,14 @@
-# Publish tablet-app/ to the gh-pages branch (static site for phones/tablets).
-# Study data is NOT hosted — only the app shell (HTML/JS/CSS). Progress stays on-device.
+# Publish tablet-app/ to gh-pages for optional web access.
+# PRIMARY install path for students is the Android APK release (see build-android-apk.yml).
 #
-# One-time (repo Settings → Pages):
-#   Source: Deploy from a branch
-#   Branch: gh-pages / (root)
-#
-# Student link: https://mnis846.github.io/study-routine-tracker/
-# Instant CDN link (no Pages setup): see docs/TABLET_GUIDE.md
+# Repo Settings → Pages → Deploy from branch → gh-pages / (root)
+# Then: https://mnis846.github.io/study-routine-tracker/
 
 name: Deploy tablet app
 
 on:
   push:
-    branches: [tablet-android, main]
+    branches: [tablet-android]
     paths:
       - "tablet-app/**"
       - ".github/workflows/deploy-tablet-app.yml"
@@ -36,7 +32,56 @@ jobs:
         run: |
           mkdir -p _site
           cp -a tablet-app/. _site/
+          # Project pages live under /study-routine-tracker/ — inject base for absolute asset resolution
+          python3 <<'PY'
+          from pathlib import Path
+          base = "/study-routine-tracker/"
+          index = Path("_site/index.html")
+          html = index.read_text(encoding="utf-8")
+          if "<base " not in html:
+              html = html.replace(
+                  "<head>",
+                  f'<head>\n  <base href="{base}">',
+                  1,
+              )
+              index.write_text(html, encoding="utf-8")
+          # Manifest start_url/scope must be absolute for subpath hosting
+          man = Path("_site/manifest.webmanifest")
+          import json
+          data = json.loads(man.read_text(encoding="utf-8"))
+          data["start_url"] = base + "index.html"
+          data["scope"] = base
+          data["id"] = base
+          for icon in data.get("icons", []):
+              src = icon.get("src", "").lstrip("./")
+              icon["src"] = base + src
+          man.write_text(json.dumps(data, indent=2), encoding="utf-8")
+          PY
           touch _site/.nojekyll
+          # Simple landing that always offers APK + open app
+          cat > _site/get.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Get Study Tracker</title>
+            <style>
+              body{font-family:system-ui,sans-serif;max-width:420px;margin:2rem auto;padding:0 1rem;line-height:1.5}
+              a.btn{display:block;text-align:center;padding:1rem;border-radius:12px;margin:0.75rem 0;text-decoration:none;font-weight:700}
+              .primary{background:#0d9488;color:#fff}
+              .secondary{background:#e2e8f0;color:#0f172a}
+            </style>
+          </head>
+          <body>
+            <h1>Study Tracker</h1>
+            <p>For Android phone or tablet. No laptop needed.</p>
+            <a class="btn primary" href="https://github.com/mnis846/study-routine-tracker/releases/download/android-latest/StudyTracker.apk">Download Android app (APK)</a>
+            <a class="btn secondary" href="./index.html">Open web version</a>
+            <p style="color:#64748b;font-size:0.9rem">Recommended: install the APK. Data stays on your device.</p>
+          </body>
+          </html>
+          HTML
           test -f _site/index.html
 
       - name: Publish to gh-pages

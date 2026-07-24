@@ -1,0 +1,11 @@
+{
+  "appId": "com.studyroutine.tracker",
+  "appName": "Study Tracker",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

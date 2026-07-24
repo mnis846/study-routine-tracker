@@ -424,3 +424,14 @@ label.field {
 }
 
 .install-banner.show { display: block; }
+
+.install-banner a.primary {
+  background: linear-gradient(135deg, var(--teal), var(--violet));
+  color: #fff;
+  font-weight: 700;
+}
+
+html[data-packaged="capacitor"] #install-banner,
+html.standalone #install-banner {
+  display: none !important;
+}

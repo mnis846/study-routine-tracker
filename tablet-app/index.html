@@ -25,13 +25,19 @@
   </header>
 
   <main>
-    <div id="install-banner" class="install-banner">
-      <strong>Install on this tablet</strong>
-      <p class="muted" style="margin:6px 0 10px">Works offline. Study data stays on this device.</p>
+    <div id="install-banner" class="install-banner show">
+      <strong>Install Study Tracker on this device</strong>
+      <p class="muted" style="margin:6px 0 10px">
+        Best option: install the Android app (APK). Works offline. Data stays on this phone/tablet.
+      </p>
+      <a class="primary" id="btn-download-apk" href="https://github.com/mnis846/study-routine-tracker/releases/download/android-latest/StudyTracker.apk" style="display:flex;align-items:center;justify-content:center;text-decoration:none;min-height:48px;border-radius:14px;margin-bottom:8px">
+        Download Android app (APK)
+      </a>
       <div class="btn-row">
-        <button class="primary" id="btn-install" type="button">Install app</button>
-        <button class="secondary" id="btn-install-help" type="button">How to install</button>
+        <button class="secondary" id="btn-install" type="button">Browser install tips</button>
+        <button class="ghost" id="btn-install-help" type="button">Help</button>
       </div>
+      <button class="ghost" id="btn-dismiss-install" type="button" style="margin-top:8px">I'm already installed — hide</button>
     </div>
 
     <div id="welcome" class="welcome">
@@ -198,14 +204,23 @@
   </div>
 
   <div id="sheet-install-help" class="sheet">
-    <h3>Install (phone or tablet only)</h3>
-    <p class="muted">No laptop required. Use <strong>Chrome</strong>.</p>
+    <h3>Install on Android</h3>
+    <p class="muted"><strong>Recommended — real app file (APK)</strong></p>
     <ol class="muted" style="padding-left:1.2rem;line-height:1.55">
-      <li>Open this page (the study tracker link) in Chrome.</li>
-      <li>Tap the <strong>⋮</strong> menu (top right).</li>
-      <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-      <li>Open the new icon anytime — works offline. Study data stays on this device.</li>
+      <li>Tap <strong>Download Android app (APK)</strong>.</li>
+      <li>Open the file when download finishes.</li>
+      <li>If asked, allow installs from Chrome / Files.</li>
+      <li>Tap <strong>Install</strong>, then open <strong>Study Tracker</strong>.</li>
     </ol>
+    <p class="muted" style="margin-top:12px"><strong>Browser shortcut (optional)</strong></p>
+    <ol class="muted" style="padding-left:1.2rem;line-height:1.55">
+      <li>In Chrome, tap <strong>⋮</strong> (top right).</li>
+      <li>Tap <strong>Add to Home screen</strong> or <strong>Install app</strong> if shown.</li>
+    </ol>
+    <p class="muted" style="margin-top:12px">
+      APK download page:<br />
+      <a href="https://github.com/mnis846/study-routine-tracker/releases/tag/android-latest">github.com/.../android-latest</a>
+    </p>
     <button class="primary" type="button" data-close-sheet style="margin-top:12px">Close</button>
   </div>
 

@@ -1,0 +1,94 @@
+# Build a real Android APK (Capacitor) and publish it to GitHub Releases.
+# Phone/tablet students download and install — no laptop, no flaky PWA install prompt.
+
+name: Build Android APK
+
+on:
+  push:
+    branches: [tablet-android]
+    paths:
+      - "tablet-app/**"
+      - "mobile/**"
+      - ".github/workflows/build-android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor deps
+        working-directory: mobile
+        run: |
+          npm install
+          node scripts/sync-web.js
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Stage APK
+        run: |
+          mkdir -p dist
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/StudyTracker.apk
+          ls -lh dist/StudyTracker.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StudyTracker-apk
+          path: dist/StudyTracker.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (stable tag)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Study Tracker for Android
+          body: |
+            ## Install on Android phone or tablet (no laptop)
+
+            1. Tap **StudyTracker.apk** below and download it.
+            2. Open the downloaded file.
+            3. If Android asks, allow **Install unknown apps** for Chrome/Files.
+            4. Tap **Install**, then **Open**.
+
+            All study data (plan, hours, notes, garden) stays **on your device**.
+
+            ### Notes
+            - Debug/sideload build for personal use (not Play Store).
+            - Laptop users can still use the Windows Streamlit app in this repo.
+          files: dist/StudyTracker.apk
+          make_latest: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

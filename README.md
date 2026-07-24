@@ -19,7 +19,7 @@ A simple **Streamlit** study tracker for competitive exams or any study goal.
 | Device | App | Data |
 | --- | --- | --- |
 | **Windows laptop** | Streamlit (`Start Tracker.bat`, optional autostart) | Local SQLite on the PC |
-| **Android phone / tablet** | Offline PWA (`tablet-app/`) via GitHub Pages link or LAN | Local on that device |
+| **Android phone / tablet** | **APK** from GitHub Releases (`android-latest`) | Local on that device |
 
 Tablet guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)  
 Branch **`tablet-android`** carries the tablet PWA; laptop installers remain in the repo.
@@ -72,17 +72,15 @@ Open **http://localhost:8501** — no signup. Progress saves automatically.
 
 ### Android phone or tablet (no laptop required)
 
-Students with **only a phone or tablet** — no PC, no Streamlit:
+Browser “Install app” is unreliable. Students install a **real APK**:
 
-1. Open this in **Chrome**:  
-   **https://cdn.jsdelivr.net/gh/mnis846/study-routine-tracker@tablet-android/tablet-app/index.html**  
-2. **⋮** → **Install app** / **Add to Home screen**  
-3. Study with **Today · Hours · Notes · Garden** — data stays **on that device**
+1. On the phone/tablet, open:  
+   **https://github.com/mnis846/study-routine-tracker/releases/download/android-latest/StudyTracker.apk**  
+2. Download → open the file → **Install** (allow unknown apps if asked)  
+3. Open **Study Tracker** — offline, data stays **on that device**
 
-Optional short URL (after Pages uses the `gh-pages` branch):  
-https://mnis846.github.io/study-routine-tracker/
+Release page: https://github.com/mnis846/study-routine-tracker/releases/tag/android-latest  
 
-Optional LAN from a PC: `Start Tablet App.bat`  
 Full guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
 
 ### Windows shortcut

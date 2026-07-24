@@ -21,11 +21,12 @@ study-routine-tracker/
 │   ├── desktop_companion.py
 │   └── coach.py
 │
-├── tablet-app/            # Offline installable tablet PWA
+├── tablet-app/            # Offline study UI (web + Capacitor www source)
 │   ├── index.html
 │   ├── sw.js · manifest.webmanifest
 │   ├── css/ · js/ · icons/
 │   └── README.md
+├── mobile/                # Capacitor Android packaging (APK via CI)
 │
 ├── assets/                # Favicon, stickers, CSS
 ├── games/                 # Break mini-games (HTML)
@@ -55,7 +56,6 @@ Laptop installers stay in the repo on both.
 
 ## Android phone / tablet
 
-Offline PWA: `tablet-app/`  
-Phone-only install: GitHub Pages (workflow `.github/workflows/deploy-tablet-app.yml`)  
-Optional LAN: `Start Tablet App.bat`  
+**Primary:** APK from GitHub Release `android-latest` (workflow `build-android-apk.yml`)  
+**Web UI source:** `tablet-app/` · Capacitor shell: `mobile/`  
 Guide: [TABLET_GUIDE.md](TABLET_GUIDE.md).
