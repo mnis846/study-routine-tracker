@@ -19,7 +19,7 @@ A simple **Streamlit** study tracker for competitive exams or any study goal.
 | Device | App | Data |
 | --- | --- | --- |
 | **Windows laptop** | Streamlit (`Start Tracker.bat`, optional autostart) | Local SQLite on the PC |
-| **Android tablet** | Offline PWA in `tablet-app/` (`Start Tablet App.bat` to install) | Local on the tablet |
+| **Android phone / tablet** | Offline PWA (`tablet-app/`) via GitHub Pages link or LAN | Local on that device |
 
 Tablet guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)  
 Branch **`tablet-android`** carries the tablet PWA; laptop installers remain in the repo.
@@ -70,16 +70,18 @@ streamlit run app.py
 
 Open **http://localhost:8501** — no signup. Progress saves automatically.
 
-### Android tablet (offline installable app)
+### Android phone or tablet (no laptop required)
 
-No cloud host required. The tablet app lives in **`tablet-app/`** and stores progress **on the device**.
+Students with **only a phone or tablet** install from a normal HTTPS link — no PC, no Streamlit.
 
-1. On the PC, double-click **`Start Tablet App.bat`** (same Wi‑Fi as the tablet).  
-2. On the tablet, open the printed URL in **Chrome** (e.g. `http://192.168.x.x:8765/`).  
-3. Chrome menu **⋮** → **Install app** / **Add to Home screen**.  
-4. Use **Today · Hours · Notes · Garden** daily. Works offline after install.
+1. Open **https://mnis846.github.io/study-routine-tracker/** in **Chrome**  
+   *(after GitHub Pages is enabled once — see [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md))*  
+2. **⋮** → **Install app** / **Add to Home screen**  
+3. Use **Today · Hours · Notes · Garden** — data stays **on that device**, works offline  
 
-Details: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
+Optional (home Wi‑Fi + PC): double-click **`Start Tablet App.bat`**, open the printed LAN URL on the tablet.
+
+Full guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
 
 ### Windows shortcut
 

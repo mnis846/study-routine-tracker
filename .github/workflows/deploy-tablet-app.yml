@@ -1,0 +1,55 @@
+# Publish tablet-app/ as a static site (GitHub Pages).
+# Phone/tablet-only students open the HTTPS link in Chrome and install — no laptop needed.
+# Data still stores on the device, not on GitHub.
+
+name: Deploy tablet app
+
+on:
+  push:
+    branches: [tablet-android, main]
+    paths:
+      - "tablet-app/**"
+      - ".github/workflows/deploy-tablet-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: tablet-app-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static site
+        run: |
+          mkdir -p _site
+          cp -a tablet-app/. _site/
+          touch _site/.nojekyll
+          # Helpful landing note for the published URL root
+          if [ ! -f _site/index.html ]; then
+            echo "tablet-app/index.html missing" >&2
+            exit 1
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

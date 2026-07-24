@@ -1,15 +1,15 @@
-# Tablet app guide (offline, local data)
+# Tablet / phone app guide
 
-The **tablet app** is a small installable web app in `tablet-app/`.  
-It is **not** Streamlit Cloud. Study data is stored **on the device** (browser / installed app storage).
+Offline installable study app (`tablet-app/`).  
+**Data stays on the phone or tablet** — not on a cloud study database.
 
-Works for any Android tablet (or phone) with Chrome.
+Built for students who may have **only an Android phone or tablet** (no laptop).
 
 ---
 
 ## What you get
 
-| Feature | On the tablet |
+| Feature | On the device |
 | --- | --- |
 | **Today** | Daily study plan — tick items when done |
 | **Hours** | Quick taps (+30 min, +1h, +2h, +3h) |
@@ -17,47 +17,80 @@ Works for any Android tablet (or phone) with Chrome.
 | **Heatmap** | Calendar of study days |
 | **Garden** | XP + trees grow from consistency |
 | **Install** | Chrome → Install app / Add to Home screen |
-| **Offline** | After first open/install, works without network |
-| **Backup** | Download / restore JSON from More |
+| **Offline** | After first open, works without network |
+| **Backup** | Download / restore JSON from **More** |
 
-The Windows laptop app (Streamlit + `Start Tracker.bat` + autostart) is separate and stays as-is.
+The Windows laptop Streamlit app is optional and separate.
 
 ---
 
-## First-time setup (one PC + tablet on same Wi‑Fi)
+## Path A — Phone or tablet only (recommended)
 
-1. On the **Windows PC**, open the project folder.
-2. Double-click **`Start Tablet App.bat`**  
-   (or run `scripts\serve_tablet_app.ps1`).
-3. Note the tablet URL printed, e.g. `http://192.168.x.x:8765/`
-4. On the **tablet**, open that URL in **Chrome**.
-5. Tap **⋮** → **Install app** or **Add to Home screen**.
-6. Open the new home-screen icon. Progress saves on the tablet.
+No PC. No Streamlit. One link in Chrome.
 
-After install, the PC server is only needed again if you want to update the app files.
+### 1) Published app link
 
-Windows Firewall may ask to allow Python — allow it on **private** networks.
+After GitHub Pages is enabled for this repo (see below), open:
+
+**https://mnis846.github.io/study-routine-tracker/**
+
+(If the repo is forked, replace `mnis846` with the GitHub username.)
+
+### 2) Install on the device
+
+1. Open the link in **Chrome** (Android phone or tablet).  
+2. Tap **⋮** → **Install app** or **Add to Home screen**.  
+3. Open the new icon.  
+4. Study offline anytime. Progress is saved on **that device**.
+
+That’s the full install for a student with no laptop.
+
+### One-time setup for the repo owner (any computer or GitHub mobile/web)
+
+GitHub must serve the static files once:
+
+1. Repo → **Settings** → **Pages**  
+2. **Source**: GitHub Actions  
+3. Push to branch `tablet-android` or `main` (workflow: `.github/workflows/deploy-tablet-app.yml`)  
+   — or run **Actions** → **Deploy tablet app** → **Run workflow**  
+4. Wait until the workflow is green, then open the Pages URL above.
+
+This is only static file hosting (HTML/JS/CSS). Study logs never go to GitHub Pages; they stay in the browser on the phone/tablet.
+
+---
+
+## Path B — Optional: install over home Wi‑Fi from a PC
+
+Only if you already have the project on a Windows PC and want a local server:
+
+1. Double-click **`Start Tablet App.bat`**  
+2. On the phone/tablet (same Wi‑Fi), open the printed URL in Chrome  
+3. Install as above  
+
+Not required when Path A is live.
 
 ---
 
 ## Daily use
 
 1. Open **Study Tracker** from the home screen.  
-2. **Today** — add what to study; tick boxes when finished.  
+2. **Today** — plan; tick when finished.  
 3. **Hours** — tap how long you studied.  
 4. **Notes** — one short line.  
-5. **Garden** — optional; grows from hours and finished plan items.
+5. **Garden** — grows from hours + finished plan items.
 
 ---
 
 ## Settings & backup
 
-Open **More** (or the gear icon):
+**More** (or gear):
 
 - Display name  
 - Daily hour goal  
-- **Download backup** — keep a JSON copy somewhere safe  
-- **Restore backup** — load a previous JSON file  
+- **Download backup** — keep the JSON in Files / Drive  
+- **Restore backup** — if the browser data was cleared  
+
+Tip: download a backup weekly. Clearing Chrome site data wipes local progress.
 
 ---
 
@@ -65,19 +98,19 @@ Open **More** (or the gear icon):
 
 | Problem | What to try |
 | --- | --- |
-| Tablet can’t open the URL | Same Wi‑Fi as the PC; check the IP in the server window; allow firewall |
-| No “Install app” | Use Chrome; open via `http://…` (not a file); try **Add to Home screen** |
-| Data missing after browser clear | Clearing site data wipes local storage — restore from a backup |
-| App looks old after an update | Serve the new `tablet-app/` again, open the URL once, then reopen the icon |
+| Pages link 404 | Owner: enable Pages (GitHub Actions) and re-run **Deploy tablet app** |
+| No “Install app” | Use Chrome; wait for the page to fully load; try **Add to Home screen** |
+| Data missing | Browser data was cleared — restore a JSON backup |
+| Two devices, different progress | Storage is per device — export/import backup to copy |
 
 ---
 
-## For developers
+## Developers
 
 ```bash
 cd tablet-app
 python -m http.server 8765 --bind 0.0.0.0
 ```
 
-Files: `index.html`, `css/`, `js/`, `sw.js`, `manifest.webmanifest`.  
-Storage: IndexedDB + localStorage key `srt_tablet_state_v1`.
+Storage: IndexedDB + localStorage (`srt_tablet_state_v1`).  
+Deploy: `.github/workflows/deploy-tablet-app.yml` → GitHub Pages.

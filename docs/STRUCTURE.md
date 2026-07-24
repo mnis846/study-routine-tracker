@@ -53,7 +53,9 @@ See `tracker/paths.py` and `tablet-app/js/db.js`.
 
 Laptop installers stay in the repo on both.
 
-## Android tablet
+## Android phone / tablet
 
-Offline PWA: `tablet-app/` · serve with `Start Tablet App.bat`.  
+Offline PWA: `tablet-app/`  
+Phone-only install: GitHub Pages (workflow `.github/workflows/deploy-tablet-app.yml`)  
+Optional LAN: `Start Tablet App.bat`  
 Guide: [TABLET_GUIDE.md](TABLET_GUIDE.md).

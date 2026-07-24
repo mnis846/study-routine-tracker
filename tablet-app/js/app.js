@@ -394,7 +394,10 @@
 
     if ("serviceWorker" in navigator) {
       try {
-        await navigator.serviceWorker.register("./sw.js");
+        const swUrl = new URL("sw.js", window.location.href);
+        await navigator.serviceWorker.register(swUrl.href, {
+          scope: new URL("./", window.location.href).pathname,
+        });
       } catch {
         /* offline SW optional when opened as file:// */
       }

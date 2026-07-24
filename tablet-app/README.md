@@ -1,14 +1,18 @@
-# Tablet app (offline PWA)
+# Tablet / phone app (offline PWA)
 
-Installable study tracker for Android tablets.  
-**Local data only** — no Streamlit Cloud, no account.
+Installable study tracker for Android phones and tablets.  
+**Local data only** — no account, no Streamlit.
 
-See [docs/TABLET_GUIDE.md](../docs/TABLET_GUIDE.md) for setup.
+## Phone-only (no laptop)
 
-Quick start from repo root:
+Published URL (after GitHub Pages is on):
 
-```text
-Start Tablet App.bat
-```
+https://mnis846.github.io/study-routine-tracker/
 
-Then open the printed URL on the tablet in Chrome → Install app.
+Chrome → Install app / Add to Home screen. Progress stays on the device.
+
+## Optional: LAN from a PC
+
+From repo root: `Start Tablet App.bat` → open the printed URL on the device.
+
+See [docs/TABLET_GUIDE.md](../docs/TABLET_GUIDE.md).
