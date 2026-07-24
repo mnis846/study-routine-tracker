@@ -6,6 +6,9 @@
   let page = "today";
   let deferredInstall = null;
   let gardenCtrl = null;
+  let editHoursDate = null;
+  let editNoteId = null;
+  let editItemId = null;
 
   const $ = (sel) => document.querySelector(sel);
   const pages = {
@@ -114,12 +117,13 @@
         <input type="checkbox" ${item.status === "Done" ? "checked" : ""} ${item.status === "Skipped" ? "disabled" : ""} />
         <div class="body">
           <div class="text">${escapeHtml(item.text)}</div>
-          <div class="btn-row" style="margin-top:8px;grid-template-columns:1fr">
+          <div class="btn-row" style="margin-top:8px;grid-template-columns:1fr 1fr">
+            <button class="ghost" data-act="edit">Edit</button>
             ${
               item.status === "Skipped"
                 ? `<button class="ghost" data-act="unskip">Undo skip</button>`
                 : item.status === "Done"
-                  ? ""
+                  ? `<button class="ghost" data-act="undone">Undo done</button>`
                   : `<button class="ghost" data-act="skip">Skip</button>`
             }
           </div>
@@ -148,6 +152,15 @@
         await persist();
         render();
       });
+      div.querySelector('[data-act="undone"]')?.addEventListener("click", async () => {
+        item.status = "Pending";
+        await persist();
+        toast("Marked as not done");
+        render();
+      });
+      div.querySelector('[data-act="edit"]')?.addEventListener("click", () => {
+        openEditItem(item.id);
+      });
       list.appendChild(div);
     });
 
@@ -163,10 +176,22 @@
   function renderHours() {
     const today = L.todayISO();
     const goal = Number(state.dailyGoal) || 6;
+    const maxDay = L.MAX_DAILY_HOURS || 10;
     const todayH = L.hoursOn(state, today);
     const pct = Math.min(100, Math.round((todayH / goal) * 100));
-    $("#hours-today").textContent = `${todayH}h / ${goal}h`;
+    $("#hours-today").textContent = `${todayH}h / ${goal}h goal (max ${maxDay}h)`;
     $("#hours-progress").style.width = `${pct}%`;
+
+    // Disable add buttons near cap
+    document.querySelectorAll("[data-add-hours]").forEach((btn) => {
+      const add = Number(btn.dataset.addHours);
+      btn.disabled = todayH >= maxDay || todayH + add > maxDay + 0.001;
+      btn.style.opacity = btn.disabled ? "0.45" : "1";
+    });
+    document.querySelectorAll("[data-sub-hours]").forEach((btn) => {
+      btn.disabled = todayH <= 0;
+      btn.style.opacity = btn.disabled ? "0.45" : "1";
+    });
 
     const week = L.weekHours(state, today);
     const maxH = Math.max(goal, ...week.map((w) => w.hours), 1);
@@ -182,6 +207,32 @@
       wrap.innerHTML = `<div class="bar ${w.isToday ? "today" : ""}" style="height:${w.hours ? h : 4}%"></div><span class="dlabel">${label}</span>`;
       bars.appendChild(wrap);
     });
+
+    // Recent days list (editable)
+    const recent = $("#recent-hours-list");
+    if (recent) {
+      const days = Object.keys(state.hours || {})
+        .sort()
+        .reverse()
+        .slice(0, 21);
+      if (!days.length) {
+        recent.innerHTML = `<p class="muted">No hours logged yet.</p>`;
+      } else {
+        recent.innerHTML = "";
+        days.forEach((d) => {
+          const h = L.hoursOn(state, d);
+          const notes = state.hours[d]?.notes || "";
+          const row = document.createElement("div");
+          row.className = "list-note recent-hour-row";
+          row.innerHTML = `
+            <div class="meta">${escapeHtml(d)}${d === today ? " · today" : ""}</div>
+            <div><strong>${h}h</strong>${notes ? ` · ${escapeHtml(notes)}` : ""}</div>
+            <button class="ghost" type="button" style="margin-top:6px;min-height:40px">Edit / fix</button>`;
+          row.querySelector("button").addEventListener("click", () => openEditHours(d));
+          recent.appendChild(row);
+        });
+      }
+    }
 
     renderHeatmap(today);
   }
@@ -218,7 +269,8 @@
         i.title = tip;
         i.setAttribute("aria-label", tip);
         i.addEventListener("click", () => {
-          $("#heat-tip").textContent = tip;
+          $("#heat-tip").textContent = tip + (c.isFuture ? "" : " · tap Edit below to change");
+          if (!c.isFuture) openEditHours(c.date);
         });
         heat.appendChild(i);
       });
@@ -243,9 +295,58 @@
       div.className = "list-note";
       div.innerHTML = `
         <div class="meta">${escapeHtml(n.date)} · ${escapeHtml(n.subject || "General")}</div>
-        <div>${escapeHtml(n.text)}</div>`;
+        <div>${escapeHtml(n.text)}</div>
+        <button class="ghost" type="button" style="margin-top:6px;min-height:40px">Edit / delete</button>`;
+      div.querySelector("button").addEventListener("click", () => openEditNote(n.id));
       list.appendChild(div);
     });
+  }
+
+  function openEditHours(dateStr) {
+    editHoursDate = dateStr;
+    const h = L.hoursOn(state, dateStr);
+    const notes = state.hours[dateStr]?.notes || "";
+    $("#edit-hours-title").textContent = "Edit hours";
+    $("#edit-hours-date").textContent = dateStr;
+    $("#edit-hours-value").value = h;
+    $("#edit-hours-value").max = L.MAX_DAILY_HOURS || 10;
+    $("#edit-hours-notes").value = notes;
+    openSheet("#sheet-edit-hours");
+  }
+
+  function openEditNote(id) {
+    const n = (state.notes || []).find((x) => x.id === id);
+    if (!n) return;
+    editNoteId = id;
+    $("#edit-note-text").value = n.text || "";
+    const sel = $("#edit-note-subject");
+    const sub = n.subject || "General";
+    // ensure option exists
+    let found = false;
+    for (const opt of sel.options) {
+      if (opt.value === sub || opt.text === sub) {
+        sel.value = opt.value;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const o = document.createElement("option");
+      o.text = sub;
+      o.value = sub;
+      sel.add(o);
+      sel.value = sub;
+    }
+    openSheet("#sheet-edit-note");
+  }
+
+  function openEditItem(id) {
+    const today = L.todayISO();
+    const item = planFor(today).items.find((x) => x.id === id);
+    if (!item) return;
+    editItemId = id;
+    $("#edit-item-text").value = item.text || "";
+    openSheet("#sheet-edit-item");
   }
 
   function renderGarden() {
@@ -373,12 +474,36 @@
 
   async function addHours(amount) {
     const today = L.todayISO();
-    const cur = state.hours[today] || { hours: 0, notes: "" };
-    cur.hours = Math.round((Number(cur.hours) + amount) * 100) / 100;
-    state.hours[today] = cur;
-    L.awardHours(state, amount, today);
+    const prev = L.hoursOn(state, today);
+    const maxDay = L.MAX_DAILY_HOURS || 10;
+    if (prev >= maxDay) {
+      toast(`Daily max is ${maxDay}h`);
+      return;
+    }
+    const result = L.addHoursClamped(state, amount, today);
+    if (result.applied === prev) {
+      toast(`Can't go over ${maxDay}h today`);
+      return;
+    }
     await persist();
-    toast(`+${amount}h saved · today ${cur.hours}h`);
+    toast(`+${result.delta}h · today ${result.applied}h / ${maxDay}h max`);
+    render();
+  }
+
+  async function subHours(amount) {
+    const today = L.todayISO();
+    const prev = L.hoursOn(state, today);
+    if (prev <= 0) {
+      toast("Nothing to remove today");
+      return;
+    }
+    const result = L.addHoursClamped(state, -Math.abs(amount), today);
+    await persist();
+    toast(
+      result.applied <= 0
+        ? "Today cleared"
+        : `−${Math.abs(result.delta)}h · today ${result.applied}h`
+    );
     render();
   }
 
@@ -421,6 +546,120 @@
     document.querySelectorAll("[data-add-hours]").forEach((btn) => {
       btn.addEventListener("click", () => addHours(Number(btn.dataset.addHours)));
     });
+    document.querySelectorAll("[data-sub-hours]").forEach((btn) => {
+      btn.addEventListener("click", () => subHours(Number(btn.dataset.subHours)));
+    });
+
+    $("#btn-edit-today-hours")?.addEventListener("click", () => {
+      openEditHours(L.todayISO());
+    });
+    $("#btn-clear-today-hours")?.addEventListener("click", async () => {
+      const today = L.todayISO();
+      if (L.hoursOn(state, today) <= 0) {
+        toast("Today is already empty");
+        return;
+      }
+      if (!confirm("Clear all hours for today?")) return;
+      L.setDayHours(state, today, 0);
+      await persist();
+      toast("Today cleared");
+      render();
+    });
+
+    $("#edit-hours-save")?.addEventListener("click", async () => {
+      if (!editHoursDate) return;
+      let val = Number($("#edit-hours-value").value);
+      if (!Number.isFinite(val) || val < 0) val = 0;
+      const maxDay = L.MAX_DAILY_HOURS || 10;
+      if (val > maxDay) {
+        toast(`Max is ${maxDay}h per day`);
+        val = maxDay;
+      }
+      const notes = ($("#edit-hours-notes").value || "").trim();
+      const result = L.setDayHours(state, editHoursDate, val);
+      if (result.applied > 0) {
+        state.hours[editHoursDate].notes = notes;
+      }
+      await persist();
+      closeSheets();
+      toast(
+        result.applied <= 0
+          ? `${editHoursDate} cleared`
+          : `${editHoursDate} set to ${result.applied}h`
+      );
+      editHoursDate = null;
+      render();
+    });
+
+    $("#edit-hours-clear")?.addEventListener("click", async () => {
+      if (!editHoursDate) return;
+      L.setDayHours(state, editHoursDate, 0);
+      await persist();
+      closeSheets();
+      toast(`${editHoursDate} cleared`);
+      editHoursDate = null;
+      render();
+    });
+
+    $("#edit-note-save")?.addEventListener("click", async () => {
+      if (!editNoteId) return;
+      const n = (state.notes || []).find((x) => x.id === editNoteId);
+      if (!n) return;
+      const text = ($("#edit-note-text").value || "").trim();
+      if (!text) {
+        toast("Note can't be empty");
+        return;
+      }
+      n.text = text;
+      n.subject = $("#edit-note-subject").value || "General";
+      await persist();
+      closeSheets();
+      toast("Note updated");
+      editNoteId = null;
+      render();
+    });
+
+    $("#edit-note-delete")?.addEventListener("click", async () => {
+      if (!editNoteId) return;
+      if (!confirm("Delete this note?")) return;
+      state.notes = (state.notes || []).filter((x) => x.id !== editNoteId);
+      await persist();
+      closeSheets();
+      toast("Note deleted");
+      editNoteId = null;
+      render();
+    });
+
+    $("#edit-item-save")?.addEventListener("click", async () => {
+      if (!editItemId) return;
+      const today = L.todayISO();
+      const item = planFor(today).items.find((x) => x.id === editItemId);
+      if (!item) return;
+      const text = ($("#edit-item-text").value || "").trim();
+      if (!text) {
+        toast("Write something first");
+        return;
+      }
+      item.text = text;
+      await persist();
+      closeSheets();
+      toast("Plan item updated");
+      editItemId = null;
+      render();
+    });
+
+    $("#edit-item-delete")?.addEventListener("click", async () => {
+      if (!editItemId) return;
+      if (!confirm("Delete this plan item?")) return;
+      const today = L.todayISO();
+      const plan = planFor(today);
+      plan.items = plan.items.filter((x) => x.id !== editItemId);
+      await persist();
+      closeSheets();
+      toast("Plan item deleted");
+      editItemId = null;
+      render();
+    });
 
     $("#save-note").addEventListener("click", async () => {
       const text = $("#note-text").value.trim();
@@ -445,7 +684,9 @@
     $("#save-settings").addEventListener("click", async () => {
       state.name = ($("#settings-name").value || "Student").trim().slice(0, 40);
       const g = Number($("#settings-goal").value);
-      state.dailyGoal = !Number.isFinite(g) || g < 0.5 ? 6 : Math.min(16, g);
+      const maxDay = L.MAX_DAILY_HOURS || 10;
+      state.dailyGoal =
+        !Number.isFinite(g) || g < 0.5 ? 6 : Math.min(maxDay, g);
       await persist();
       toast("Settings saved");
       render();

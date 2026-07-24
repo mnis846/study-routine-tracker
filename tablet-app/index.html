@@ -78,15 +78,27 @@
     <section id="page-hours" class="hidden">
       <div class="card">
         <h3>Log study time</h3>
-        <p class="muted">Today: <strong id="hours-today">0h / 6h</strong></p>
+        <p class="muted">Today: <strong id="hours-today">0h / 6h</strong> · max 10h/day</p>
         <div class="progress"><span id="hours-progress" style="width:0%"></span></div>
-        <p class="muted" style="margin-top:12px">Quick add (tap one)</p>
+        <p class="muted" style="margin-top:12px">Quick add</p>
         <div class="btn-row four">
           <button class="secondary" type="button" data-add-hours="0.5">+ 30 min</button>
           <button class="primary" type="button" data-add-hours="1">+ 1 hour</button>
           <button class="primary" type="button" data-add-hours="2">+ 2 hours</button>
           <button class="secondary" type="button" data-add-hours="3">+ 3 hours</button>
         </div>
+        <p class="muted" style="margin-top:12px">Fix a mistake</p>
+        <div class="btn-row four">
+          <button class="secondary" type="button" data-sub-hours="0.5">− 30 min</button>
+          <button class="secondary" type="button" data-sub-hours="1">− 1 hour</button>
+          <button class="ghost" type="button" id="btn-edit-today-hours">Set exact…</button>
+          <button class="danger" type="button" id="btn-clear-today-hours">Clear today</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Recent days</h3>
+        <p class="muted">Tap a day to edit or clear hours you added by mistake.</p>
+        <div id="recent-hours-list"></div>
       </div>
       <div class="card">
         <h3>This week</h3>
@@ -190,8 +202,8 @@
         <h3>Settings</h3>
         <label class="field" for="settings-name">Display name</label>
         <input id="settings-name" type="text" maxlength="40" placeholder="Your name" />
-        <label class="field" for="settings-goal">Daily study goal (hours)</label>
-        <input id="settings-goal" type="number" min="0.5" max="16" step="0.5" />
+        <label class="field" for="settings-goal">Daily study goal (hours, max 10)</label>
+        <input id="settings-goal" type="number" min="0.5" max="10" step="0.5" />
         <button class="primary" id="save-settings" type="button">Save settings</button>
       </div>
       <div class="card">
@@ -240,6 +252,53 @@
       <button class="ghost" type="button" data-close-sheet>Cancel</button>
       <button class="primary" id="save-item" type="button">Save</button>
     </div>
+  </div>
+
+  <div id="sheet-edit-hours" class="sheet">
+    <h3 id="edit-hours-title">Edit hours</h3>
+    <p class="muted" id="edit-hours-date"></p>
+    <label class="field" for="edit-hours-value">Hours (0–10)</label>
+    <input id="edit-hours-value" type="number" min="0" max="10" step="0.25" />
+    <label class="field" for="edit-hours-notes">Note (optional)</label>
+    <input id="edit-hours-notes" type="text" placeholder="e.g. Mixed revision" maxlength="120" />
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-hours-clear">Clear day</button>
+      <button class="primary" type="button" id="edit-hours-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
+  </div>
+
+  <div id="sheet-edit-note" class="sheet">
+    <h3>Edit note</h3>
+    <label class="field" for="edit-note-subject">Subject</label>
+    <select id="edit-note-subject">
+      <option>General</option>
+      <option>Language / Communication</option>
+      <option>Essay / Writing</option>
+      <option>General Studies I</option>
+      <option>General Studies II</option>
+      <option>General Studies III</option>
+      <option>General Studies IV</option>
+      <option>Optional / Specialization</option>
+    </select>
+    <label class="field" for="edit-note-text">Note</label>
+    <textarea id="edit-note-text" placeholder="What you studied"></textarea>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-note-delete">Delete note</button>
+      <button class="primary" type="button" id="edit-note-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
+  </div>
+
+  <div id="sheet-edit-item" class="sheet">
+    <h3>Edit plan item</h3>
+    <label class="field" for="edit-item-text">What will you study?</label>
+    <input id="edit-item-text" type="text" placeholder="e.g. Chapter 5 notes" />
+    <div class="btn-row" style="margin-top:10px">
+      <button class="danger" type="button" id="edit-item-delete">Delete</button>
+      <button class="primary" type="button" id="edit-item-save">Save</button>
+    </div>
+    <button class="ghost" type="button" data-close-sheet style="margin-top:8px">Cancel</button>
   </div>
 
   <div id="sheet-install-help" class="sheet">

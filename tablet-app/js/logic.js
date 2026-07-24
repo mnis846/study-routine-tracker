@@ -36,6 +36,8 @@
   const STREAK_DAYS_PER_TREE = 4;
   const FOUNDATION_TREE_TARGET = 55;
   const MAX_TREES = 77;
+  /** Hard cap — realistic max study hours per calendar day */
+  const MAX_DAILY_HOURS = 10;
 
   const HARVEST_TIERS = [
     { id: "sprout", min_days: 0, emoji: "🌱", label: "First Tree" },
@@ -278,6 +280,45 @@
     return rewards.filter(Boolean);
   }
 
+  function clampDailyHours(hours) {
+    const n = Number(hours) || 0;
+    if (n <= 0) return 0;
+    return Math.min(MAX_DAILY_HOURS, Math.round(n * 100) / 100);
+  }
+
+  /**
+   * Set absolute hours for a date (0 clears the day). Returns { applied, previous, rewards }.
+   * XP is only awarded when hours increase (not on corrections downward).
+   */
+  function setDayHours(state, date, nextHours) {
+    const previous = hoursOn(state, date);
+    const applied = clampDailyHours(nextHours);
+    if (applied <= 0) {
+      delete state.hours[date];
+    } else {
+      const notes = state.hours[date]?.notes || "";
+      state.hours[date] = { hours: applied, notes };
+    }
+    const delta = Math.round((applied - previous) * 100) / 100;
+    const rewards = [];
+    if (delta > 0) {
+      rewards.push(...awardHours(state, delta, date));
+    }
+    // If they drop below goal after having hit it same day, clear daily_goal bonus flag
+    // so re-hitting goal later can award again (optional fairness on corrections).
+    const goal = Number(state.dailyGoal) || 6;
+    if (previous >= goal && applied < goal && state.bonuses) {
+      if (state.bonuses.daily_goal === date) delete state.bonuses.daily_goal;
+    }
+    return { applied, previous, delta, rewards: rewards.filter(Boolean) };
+  }
+
+  function addHoursClamped(state, amount, date = todayISO()) {
+    const previous = hoursOn(state, date);
+    const target = clampDailyHours(previous + (Number(amount) || 0));
+    return setDayHours(state, date, target);
+  }
+
   function awardHours(state, hours, date = todayISO()) {
     const rewards = [];
     const amount = Number(hours) || 0;
@@ -369,6 +410,7 @@
     HARVEST_TIERS,
     FOUNDATION_TREE_TARGET,
     MAX_TREES,
+    MAX_DAILY_HOURS,
     todayISO,
     parseISO,
     addDays,
@@ -381,6 +423,9 @@
     gardenLife,
     processCheckin,
     awardHours,
+    addHoursClamped,
+    setDayHours,
+    clampDailyHours,
     awardTargetDone,
     awardAllTargets,
     weekHours,

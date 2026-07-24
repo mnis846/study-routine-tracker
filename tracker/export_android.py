@@ -87,7 +87,7 @@ def export_sqlite_to_android_state(
             daily_goal = float(setting("daily_study_goal_hours", "6") or 6)
         except ValueError:
             daily_goal = 6.0
-        daily_goal = max(0.5, min(16.0, daily_goal))
+        daily_goal = max(0.5, min(10.0, daily_goal))
 
         hours: dict[str, dict] = {}
         for row in conn.execute(
@@ -96,8 +96,11 @@ def export_sqlite_to_android_state(
             (user_id,),
         ):
             d = _iso_date(row["log_date"])
+            h = min(10.0, max(0.0, round(float(row["hours"] or 0), 2)))
+            if h <= 0:
+                continue
             hours[d] = {
-                "hours": round(float(row["hours"] or 0), 2),
+                "hours": h,
                 "notes": (row["notes"] or "").strip(),
             }
 

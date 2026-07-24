@@ -397,6 +397,11 @@ label.field {
 }
 .tree-row:last-child { border-bottom: none; }
 
+.recent-hour-row { cursor: pointer; }
+button:disabled {
+  cursor: not-allowed;
+}
+
 .progress {
   height: 10px;
   background: #e2e8f0;
