@@ -315,6 +315,32 @@ def render_sidebar():
             width="stretch",
         )
 
+    st.markdown("**Move to Android phone**")
+    st.caption(
+        "Download this JSON, copy it to your phone, then open Study Tracker → "
+        "More → Restore backup."
+    )
+    try:
+        from tracker.export_android import export_android_json_bytes
+
+        _android_bytes, _android_summary = export_android_json_bytes(get_db_path())
+        st.download_button(
+            label="📱 Export for Android app",
+            data=_android_bytes,
+            file_name=f"android_backup_{date.today().isoformat()}.json",
+            mime="application/json",
+            key="download_android_json",
+            width="stretch",
+            type="primary",
+        )
+        st.caption(
+            f"{_android_summary['hour_days']} day(s) with hours · "
+            f"{_android_summary['total_hours']}h total · "
+            f"{_android_summary['garden_xp']:,} garden XP"
+        )
+    except Exception as exc:
+        st.caption(f"Android export unavailable: {exc}")
+
     with st.expander("Advanced (for tech support)", expanded=False):
         try:
             status = get_data_status()

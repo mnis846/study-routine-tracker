@@ -81,7 +81,10 @@ Browser “Install app” is unreliable. Students install a **real APK**:
 
 Release page: https://github.com/mnis846/study-routine-tracker/releases/tag/android-latest  
 
-Full guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
+Full guide: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)  
+
+**Move PC progress to the phone:** [docs/MIGRATE_TO_ANDROID.md](docs/MIGRATE_TO_ANDROID.md)  
+(or double-click **`Export for Android.bat`**, then phone → More → Restore backup)
 
 ### Windows shortcut
 

@@ -53,3 +53,7 @@ Thumbs.db
 
 # Generated / external assets
 assets/external/
+
+# Android migration exports
+exports/
+

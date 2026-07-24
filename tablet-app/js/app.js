@@ -468,10 +468,17 @@
         const text = await file.text();
         state = importJson(text);
         await persist();
-        toast("Backup restored");
+        const hourDays = Object.keys(state.hours || {}).length;
+        const totalH = Object.values(state.hours || {}).reduce(
+          (s, v) => s + Number(v?.hours || 0),
+          0
+        );
+        toast(
+          `Restored · ${hourDays} day(s) · ${Math.round(totalH * 10) / 10}h · ${state.gardenXp || 0} XP`
+        );
         render();
       } catch {
-        toast("Could not read that file");
+        toast("Could not read that file — use the Android JSON export");
       }
       e.target.value = "";
     });
