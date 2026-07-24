@@ -23,14 +23,27 @@ function Test-PortOpen([int]$TargetPort) {
 }
 
 function Resolve-Python {
-    $py = Get-Command python -ErrorAction SilentlyContinue
-    if ($py) { return $py.Source }
+    # Prefer project venv so README install steps work with double-click launch.
+    foreach ($rel in @("venv\Scripts\python.exe", ".venv\Scripts\python.exe")) {
+        $candidate = Join-Path $ProjectRoot $rel
+        if (Test-Path $candidate) { return $candidate }
+    }
+
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source -notlike "*WindowsApps*") { return $cmd.Source }
+
     $launcher = Get-Command py -ErrorAction SilentlyContinue
     if ($launcher) { return "$($launcher.Source) -3" }
-    $local = Join-Path $env:LOCALAPPDATA "Programs\Python\Python313\python.exe"
-    if (Test-Path $local) { return $local }
-    $local314 = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps\python.exe"
-    if (Test-Path $local314) { return $local314 }
+
+    foreach ($path in @(
+        (Join-Path $env:LOCALAPPDATA "Python\pythoncore-3.14-64\python.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python313\python.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe")
+    )) {
+        if (Test-Path $path) { return $path }
+    }
+
+    if ($cmd) { return $cmd.Source }
     return $null
 }
 
@@ -44,10 +57,13 @@ if (Test-PortOpen $Port) {
 
 $pythonCmd = Resolve-Python
 if (-not $pythonCmd) {
-    Write-Log "ERROR: Python not found in PATH"
+    Write-Log "ERROR: Python not found"
     Write-Host ""
-    Write-Host "Python not found. Install Python 3.10+ then run:"
+    Write-Host "Install Python 3.10+, then run:"
+    Write-Host "  python -m venv venv"
+    Write-Host "  venv\Scripts\activate"
     Write-Host "  pip install -r requirements.txt"
+    Write-Host "  streamlit run app.py"
     exit 1
 }
 
@@ -61,6 +77,18 @@ if ($pythonCmd -like "* -3") {
 } else {
     $exe = $pythonCmd
     $argPrefix = @()
+}
+
+# Fail fast if streamlit is missing in the chosen Python.
+$check = & $exe @($argPrefix + @("-c", "import streamlit")) 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Log "ERROR: streamlit not installed for $pythonCmd"
+    Write-Host ""
+    Write-Host "Install dependencies first:"
+    Write-Host "  python -m venv venv"
+    Write-Host "  venv\Scripts\activate"
+    Write-Host "  pip install -r requirements.txt"
+    exit 1
 }
 
 $streamlitArgs = $argPrefix + @(
@@ -89,7 +117,8 @@ Write-Log "ERROR: Server did not start within 45 seconds"
 Write-Host ""
 Write-Host "Server did not start. Try manually:"
 Write-Host "  cd $ProjectRoot"
-Write-Host "  python -m streamlit run app.py"
+Write-Host "  venv\Scripts\activate"
+Write-Host "  streamlit run app.py"
 Write-Host ""
 Write-Host "Log: $LogFile"
 exit 1

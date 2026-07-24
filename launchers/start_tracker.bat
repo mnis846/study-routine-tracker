@@ -2,11 +2,7 @@
 title Study Routine Tracker
 cd /d "%~dp0.."
 
-echo Stopping any old sticker first...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%cd%\scripts\stop_sticker.ps1" >nul 2>&1
-echo Starting Study Routine Tracker + Study Coach...
-start "" /min pythonw "%cd%\desktop_companion.py" 2>nul
-if errorlevel 1 start "" /min python "%cd%\desktop_companion.py"
+echo Starting Study Routine Tracker...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%cd%\scripts\start_tracker.ps1"
 set ERR=%ERRORLEVEL%
 
@@ -14,6 +10,10 @@ if %ERR% NEQ 0 (
     echo.
     echo Launch failed ^(exit code %ERR%^).
     echo Check tracker-launch.log in this folder.
+    echo.
+    echo Or run manually:
+    echo   venv\Scripts\activate
+    echo   streamlit run app.py
     echo.
     pause
     exit /b %ERR%

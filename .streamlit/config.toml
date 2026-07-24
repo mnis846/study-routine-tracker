@@ -11,3 +11,10 @@ showSidebarNavigation = false
 
 [browser]
 gatherUsageStats = false
+
+# Friendlier defaults when hosting for phones / Android tablets on LAN
+[server]
+enableCORS = false
+enableXsrfProtection = true
+# Headless avoids auto-opening a desktop browser on shared hosts
+headless = true

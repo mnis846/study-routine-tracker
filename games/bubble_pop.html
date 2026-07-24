@@ -81,10 +81,10 @@ function pop(b, x, y) {
   }
 }
 
-canvas.addEventListener('click', e => {
+function hitBubble(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const mx = (e.clientX - rect.left) * (W / rect.width);
-  const my = (e.clientY - rect.top) * (H / rect.height);
+  const mx = (clientX - rect.left) * (W / rect.width);
+  const my = (clientY - rect.top) * (H / rect.height);
   for (let i = bubbles.length - 1; i >= 0; i--) {
     const b = bubbles[i];
     const dx = mx - b.x, dy = my - b.y;
@@ -96,7 +96,14 @@ canvas.addEventListener('click', e => {
   }
   combo = 0;
   document.getElementById('combo').textContent = 'Combo ×1';
-});
+}
+canvas.addEventListener('click', e => hitBubble(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', e => {
+  if (!e.changedTouches.length) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  hitBubble(t.clientX, t.clientY);
+}, { passive: false });
 
 function draw() {
   ctx.fillStyle = 'rgba(15,23,42,0.18)';
