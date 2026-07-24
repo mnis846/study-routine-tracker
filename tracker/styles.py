@@ -2,11 +2,11 @@
 
 MOBILE_CSS = """
 <style>
-    /* ---- Base touch-friendly controls ---- */
+    /* ---- Base touch-friendly controls (tablet-android easy mode) ---- */
     .stButton button {
-        min-height: 2.85rem;
-        font-size: 0.95rem;
-        border-radius: 12px;
+        min-height: 3.1rem;
+        font-size: 1rem;
+        border-radius: 14px;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
     }

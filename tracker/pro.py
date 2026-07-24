@@ -31,7 +31,14 @@ def _pro_config():
     }
 
 
+# tablet-android branch: no paywalls — full features for simple tablet use.
+# Laptop installers / Pro codes still exist on main; this branch is friction-free.
+TABLET_EASY_MODE = True
+
+
 def is_pro():
+    if TABLET_EASY_MODE:
+        return True
     return get_setting(PRO_SETTING_KEY, "0") == "1"
 
 

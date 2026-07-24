@@ -249,16 +249,18 @@ def render_metric_rows(metric_rows):
 
 
 def render_sidebar():
-    st.markdown(f"### Hi, {first_name}")
-    st.caption("Local profile · auto-saves on this device")
-    st.caption(f"{'⭐ Pro' if is_pro() else 'Free plan'}")
+    """Simple settings menu — designed for one-handed tablet use."""
+    st.markdown(f"### Hi, {first_name} 👋")
+    st.caption("Everything saves automatically. No account needed.")
     st.divider()
 
-    st.markdown("**Quick start**")
-    st.caption(
-        "1. Set today's targets · 2. Log hours · 3. Note what you studied · "
-        "4. Grow your garden"
+    st.markdown("**How to use (3 steps)**")
+    st.markdown(
+        "1. **Today** — write what you will study  \n"
+        "2. **Hours** — tap how long you studied  \n"
+        "3. **Notes** — one short line about it"
     )
+    st.caption("Your garden grows when you show up.")
     st.divider()
 
     st.markdown("**Your name**")
@@ -269,19 +271,18 @@ def render_sidebar():
         key="display_name_input",
         label_visibility="collapsed",
         max_chars=40,
-        placeholder="What should we call you?",
-        help="Shown in greetings. Saved on this device only.",
+        placeholder="Your first name",
     )
-    if st.button("Save name", key="save_display_name", width="stretch"):
+    if st.button("Save name", key="save_display_name", width="stretch", type="primary"):
         if run_db(
             lambda: set_local_display_name(new_name),
             "Could not save name",
         ) is not None:
-            flash("Name updated!", toast="Name saved", toast_icon="✅")
+            flash("Name saved!", toast="Name saved", toast_icon="✅")
             st.rerun()
 
     st.divider()
-    st.markdown("**Daily study goal**")
+    st.markdown("**Hours you aim for each day**")
     if "daily_goal_input" not in st.session_state:
         st.session_state.daily_goal_input = float(daily_goal)
     new_goal = st.number_input(
@@ -291,54 +292,45 @@ def render_sidebar():
         step=0.5,
         key="daily_goal_input",
         label_visibility="collapsed",
-        help="Your personal daily hour target. Used for streaks and garden growth.",
     )
-    if st.button("Save goal", key="save_goal_main", width="stretch"):
+    if st.button("Save daily goal", key="save_goal_main", width="stretch", type="primary"):
         if run_db(
             lambda: set_daily_study_goal(new_goal),
             "Could not save study goal",
         ) is not None:
-            flash("Daily goal updated!", toast="Goal saved", toast_icon="🎯")
+            flash("Daily goal saved!", toast="Goal saved", toast_icon="🎯")
             st.rerun()
 
     st.divider()
-    st.markdown("**Local data**")
-    try:
-        status = get_data_status()
-    except DatabaseError as exc:
-        st.error(f"Data check failed: {exc}")
-        status = None
-
-    if status:
-        if status["ok"]:
-            st.success("Saving works on this device", icon="💾")
-        else:
-            st.error("Database needs attention — see path below.")
-        st.caption(
-            f"**{status['hours_days']}** day(s) with hours · "
-            f"**{status['plan_days']}** day(s) with targets · "
-            f"**{status['garden_xp']:,}** garden XP"
-        )
-        st.caption(f"File: `{status['path']}`")
-        size_kb = max(1, round(status["size_bytes"] / 1024))
-        st.caption(f"Size ~{size_kb} KB · integrity: {status['integrity']}")
-    else:
-        st.caption(f"Database file:\n`{get_db_path()}`")
-
+    st.markdown("**Save a copy (optional)**")
+    st.caption("Tap below once in a while to keep a backup file.")
     backup_bytes = run_db(read_database_backup_bytes, "Could not build backup")
     if backup_bytes is not None:
         st.download_button(
-            label="Download full backup (.db)",
+            label="📥 Download my progress",
             data=backup_bytes,
-            file_name=f"study_routine_tracker_backup_{date.today().isoformat()}.db",
+            file_name=f"study_tracker_backup_{date.today().isoformat()}.db",
             mime="application/x-sqlite3",
             key="download_sqlite_backup",
             width="stretch",
-            help="Free: copy of your entire local database. Keep it somewhere safe.",
         )
-    st.caption("Tip: download a backup weekly. Cloud demos can reset when the host sleeps.")
-    st.divider()
-    render_pro_unlock_panel()
+
+    with st.expander("Advanced (for tech support)", expanded=False):
+        try:
+            status = get_data_status()
+        except DatabaseError as exc:
+            st.error(f"Data check failed: {exc}")
+            status = None
+        if status:
+            if status["ok"]:
+                st.success("Saving works", icon="💾")
+            st.caption(f"Days with hours: {status['hours_days']}")
+            st.caption(f"Days with targets: {status['plan_days']}")
+            st.caption(f"Garden XP: {status['garden_xp']:,}")
+            st.caption(f"File: `{status['path']}`")
+        else:
+            st.caption(f"Database: `{get_db_path()}`")
+        render_pro_unlock_panel()
 
 
 def render_target_item(item):
@@ -438,29 +430,25 @@ def clear_draft_form(plan_date):
 
 def render_target_form(plan_date, label):
     st.markdown(f"**{label}**")
+    st.caption("Write short, clear lines — one subject or chapter each.")
     if draft_count_key(plan_date) not in st.session_state:
         init_draft_form(plan_date)
 
     count = st.session_state[draft_count_key(plan_date)]
     for index in range(count):
         st.text_input(
-            f"Target {index + 1}",
+            f"Item {index + 1}",
             key=draft_field_key(plan_date, index),
-            placeholder="e.g. Finish chapter 5 notes + 20 practice questions",
+            placeholder="e.g. Chapter 5 notes",
         )
 
     max_targets = 99 if is_pro() else FREE_MAX_TARGETS
-    if not is_pro():
-        st.caption(f"Free plan: up to {FREE_MAX_TARGETS} targets per day.")
 
     b1, b2 = st.columns(2)
     with b1:
-        if st.button("＋ Add target", key=f"add_{plan_date}", width="stretch"):
+        if st.button("＋ Add another", key=f"add_{plan_date}", width="stretch"):
             if count >= max_targets:
-                st.warning(
-                    f"Free plan allows {FREE_MAX_TARGETS} targets. "
-                    "Upgrade to Pro in Settings for unlimited targets."
-                )
+                st.warning(f"You can add up to {max_targets} items.")
             else:
                 next_index = st.session_state[draft_count_key(plan_date)]
                 st.session_state[draft_count_key(plan_date)] = next_index + 1
@@ -470,7 +458,7 @@ def render_target_form(plan_date, label):
         if count > 1 and st.button("－ Remove last", key=f"remove_{plan_date}", width="stretch"):
             st.session_state[draft_count_key(plan_date)] = count - 1
             st.rerun()
-    if st.button("Save Targets", type="primary", key=f"save_{plan_date}", width="stretch"):
+    if st.button("💾 Save my plan", type="primary", key=f"save_{plan_date}", width="stretch"):
         descriptions = read_draft_targets(plan_date)
         targets = [
             {"description": text, "planned_hours": 0}
@@ -478,17 +466,14 @@ def render_target_form(plan_date, label):
             if text
         ]
         if not targets:
-            st.error("Add at least one target before saving.")
+            st.error("Write at least one item before saving.")
         elif free_target_cap_reached(len(targets)):
-            st.error(
-                f"Free plan allows up to {FREE_MAX_TARGETS} targets per day. "
-                "Open Settings → Pro to unlock unlimited targets."
-            )
+            st.error(f"Please keep it to {FREE_MAX_TARGETS} items or fewer.")
         elif has_duplicate_descriptions([t["description"] for t in targets]):
-            st.error("Each target must have a unique description.")
+            st.error("Each line should be different.")
         elif run_db(
             lambda: save_daily_targets(plan_date, targets),
-            "Could not save targets",
+            "Could not save plan",
         ) is None:
             pass
         else:
@@ -496,9 +481,9 @@ def render_target_form(plan_date, label):
             st.session_state.show_target_form = False
             st.session_state.planning_date = None
             flash(
-                f"Saved {len(targets)} target(s) for "
-                f"{plan_date.strftime('%d %b %Y')} — stored on this device.",
-                toast="Targets saved",
+                f"Saved {len(targets)} item(s) for "
+                f"{plan_date.strftime('%d %b %Y')}.",
+                toast="Plan saved",
             )
             st.rerun()
 
@@ -594,34 +579,36 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Soft tip — always visible, no jargon
+st.caption("💡 Tap **☰** (top left) to set your name · Swipe the tabs below")
+
 if st.session_state.get("show_welcome"):
     with st.container(border=True):
-        st.markdown(f"**Welcome, {first_name}!** Your progress is saved automatically on this device.")
+        st.markdown(f"### Welcome, {first_name}! 📚")
         st.markdown(
-            "- **Targets** — plan what you’ll finish today  \n"
-            "- **Hours** — log study time (builds your streak)  \n"
-            "- **Logbook** — one line on what you studied  \n"
-            "- **Garden** — watch consistency turn into growth  \n"
-            "- **Backup** — sidebar → *Download full backup*"
+            "This is your **study notebook** on the tablet.\n\n"
+            "Each day:\n"
+            "1. Open **Today** → write 1–3 things you will study  \n"
+            "2. Open **Hours** → tap how long you studied  \n"
+            "3. Open **Notes** → write one short line  \n\n"
+            "Your **Garden** grows when you keep showing up. That’s it."
         )
-        if st.button("Got it — let's study", type="primary", key="dismiss_welcome"):
+        if st.button("Got it — start studying", type="primary", key="dismiss_welcome", width="stretch"):
             st.session_state.show_welcome = False
             st.rerun()
 
-# 2×2 metrics — readable on phone and Android tablet portrait
+# Clear, calm stats for a non-technical user
 render_metric_rows(
     [
         [
-            ("Study streak", f"{streak} days"),
-            ("Daily goal", f"{daily_goal:g} h"),
+            ("Day streak 🔥", f"{streak}"),
+            ("Today's goal", f"{daily_goal:g} h"),
         ],
         [
-            ("Garden XP", f"{garden_state['xp']:,}"),
+            ("Garden points", f"{garden_state['xp']:,}"),
             (
                 "Best streak",
-                f"{longest_streak} days"
-                if is_pro() and longest_streak is not None
-                else "Pro",
+                f"{longest_streak}" if longest_streak is not None else f"{streak}",
             ),
         ],
     ]
@@ -632,18 +619,21 @@ try:
     showup_hours = load_showup_hours(heatmap_start, today)
 except DatabaseError:
     showup_hours = {}
-st.markdown(
-    render_github_heatmap(
-        showup_hours,
-        streak=streak,
-        daily_goal=daily_goal,
-        display_name=first_name,
-    ),
-    unsafe_allow_html=True,
-)
+with st.expander("📅 My study calendar (optional)", expanded=False):
+    st.caption("Green squares = days you studied. Scroll sideways if needed.")
+    st.markdown(
+        render_github_heatmap(
+            showup_hours,
+            streak=streak,
+            daily_goal=daily_goal,
+            display_name=first_name,
+        ),
+        unsafe_allow_html=True,
+    )
 
+# Plain tab names — easy to read on a tablet
 tab_daily, tab_hours, tab_logbook, tab_garden, tab_break = st.tabs(
-    ["📋 Targets", "⏱️ Hours", "📓 Logbook", "🌳 Garden", "☕ Break"]
+    ["📋 Today", "⏱️ Hours", "📓 Notes", "🌳 Garden", "☕ Break"]
 )
 
 with tab_daily:
@@ -671,21 +661,21 @@ with tab_daily:
             and st.session_state.morning_prompt_dismissed_date != today.isoformat()
         )
         if show_morning_prompt:
-            st.info(f"{greeting('morning', first_name)} You haven't set today's targets yet.")
-            if st.button("Yes, set today's targets", type="primary", key="morning_yes", width="stretch"):
+            st.info(f"{greeting('morning', first_name)} What will you study today?")
+            if st.button("✍️ Write today's plan", type="primary", key="morning_yes", width="stretch"):
                 st.session_state.show_target_form = True
                 st.session_state.planning_date = today
                 init_draft_form(today)
                 st.rerun()
-            if st.button("Not now", key="morning_no", width="stretch"):
+            if st.button("Later", key="morning_no", width="stretch"):
                 st.session_state.morning_prompt_dismissed_date = today.isoformat()
                 st.rerun()
         elif summary["has_plan"] and not st.session_state.show_target_form:
             st.success(
-                f"You have {summary['total_targets']} target(s) for today. "
-                "Check them off as you go!"
+                f"You have {summary['total_targets']} thing(s) planned. "
+                "Tick the box when you finish each one."
             )
-            if st.button("Replace today's targets", key="morning_replace", width="stretch"):
+            if st.button("Change today's plan", key="morning_replace", width="stretch"):
                 st.session_state.show_target_form = True
                 st.session_state.planning_date = today
                 if plan and plan["items"]:
@@ -698,14 +688,14 @@ with tab_daily:
                 st.rerun()
     else:
         if not summary["has_plan"] and not st.session_state.show_target_form:
-            st.warning("No targets set for today yet.")
-            if st.button("Set today's targets now", type="primary", key="afternoon_set", width="stretch"):
+            st.warning("No plan for today yet — take 30 seconds to write one.")
+            if st.button("✍️ Write today's plan", type="primary", key="afternoon_set", width="stretch"):
                 st.session_state.show_target_form = True
                 st.session_state.planning_date = today
                 init_draft_form(today)
                 st.rerun()
         elif summary["has_plan"]:
-            st.caption("Check off targets throughout the day.")
+            st.caption("Tick each box when you finish that item.")
 
     if st.session_state.show_target_form and st.session_state.planning_date:
         plan_label = (
@@ -721,34 +711,36 @@ with tab_daily:
             st.rerun()
 
     if summary["has_plan"]:
-        st.subheader("Today's Targets")
+        st.subheader("Today's plan")
         third_metric = (
             ("Skipped", str(summary["skipped"]))
             if summary["skipped"]
-            else ("Done %", f"{summary['completion_pct']}%")
+            else ("Finished", f"{summary['completion_pct']}%")
         )
         render_metric_rows(
             [
-                [("Done", f"{summary['done']}/{summary['total_targets']}"), ("Pending", str(summary["pending"]))],
-                [third_metric, ("Resolved", f"{summary['resolved_pct']}%")],
+                [
+                    ("Done", f"{summary['done']}/{summary['total_targets']}"),
+                    ("Still open", str(summary["pending"])),
+                ],
+                [third_metric],
             ]
         )
         st.progress(summary["resolved_pct"] / 100)
 
-        st.markdown("**Check off each target**")
-        # Single column: large touch targets on tablets / phones
+        st.markdown("**Tap the box when you finish each one**")
         for item in plan["items"]:
             render_target_item(item)
 
         if all_targets_resolved(plan["items"]):
-            st.success("All targets resolved for today!")
+            st.success("Nice work — everything for today is done! 🎉")
             show_tomorrow_prompt = (
                 not tomorrow_summary["has_plan"]
                 and st.session_state.tomorrow_prompt_dismissed_date != today.isoformat()
                 and not st.session_state.show_target_form
             )
             if show_tomorrow_prompt:
-                st.markdown("**Set targets for tomorrow?**")
+                st.markdown("**Want a plan for tomorrow?**")
                 t1, t2 = st.columns(2)
                 with t1:
                     if st.button("Yes, plan tomorrow", type="primary", key="tomorrow_yes", width="stretch"):
@@ -763,33 +755,30 @@ with tab_daily:
             elif tomorrow_summary["has_plan"]:
                 st.info(
                     f"Tomorrow already has {tomorrow_summary['total_targets']} "
-                    "target(s) set."
+                    "item(s) planned."
                 )
 
             reflection = (plan.get("evening_reflection") or "") if plan else ""
             if "evening_reflection_input" not in st.session_state:
                 st.session_state.evening_reflection_input = reflection
-            with st.expander("🌙 Evening reflection", expanded=not reflection):
+            with st.expander("🌙 End-of-day note (optional)", expanded=not reflection):
                 st.text_area(
-                    "What went well? What will you improve tomorrow?",
+                    "How did today go?",
                     key="evening_reflection_input",
-                    placeholder="Short notes on today's study session...",
+                    placeholder="A few words is enough…",
                 )
-                if st.button("Save reflection", key="save_reflection", width="stretch"):
+                if st.button("Save note", key="save_reflection", width="stretch", type="primary"):
                     if run_db(
                         lambda: save_evening_reflection(
                             today, st.session_state.evening_reflection_input
                         ),
                         "Could not save reflection",
                     ) is not None:
-                        flash(
-                            "Reflection saved on this device.",
-                            toast="Reflection saved",
-                        )
+                        flash("Note saved.", toast="Saved")
                         st.rerun()
 
     elif not st.session_state.show_target_form:
-        st.info("No targets for today. Use the button above to set them.")
+        st.info("No plan yet — use the button above when you're ready.")
 
 with tab_hours:
     try:
@@ -801,48 +790,74 @@ with tab_hours:
     week_total = round(week_df["hours"].sum(), 1)
     goal_progress = min(today_hours / daily_goal, 1.0) if daily_goal else 0
 
-    # Stacked layout: form first, chart below (works on tablet + desktop)
-    st.subheader("Study Hours")
+    st.subheader("How long did you study?")
     render_metric_rows(
         [
             [
                 ("Today", f"{today_hours}h", f"Goal {daily_goal:g}h"),
                 ("This week", f"{week_total}h"),
             ],
-            [("Goal progress", f"{round(goal_progress * 100)}%")],
+            [("Toward goal", f"{round(goal_progress * 100)}%")],
         ]
     )
     st.progress(goal_progress)
 
-    st.markdown("**Log study time**")
-    with st.form("study_hours_form", clear_on_submit=True):
-        log_date = st.date_input("Date", today)
-        existing = get_study_hours_for_date(log_date)
-        if existing > 0:
-            st.caption(
-                f"Already logged **{existing}h** for this date — new hours will be "
-                "added; notes will be appended if provided."
+    st.markdown("**Quick add (tap one)**")
+    st.caption("Adds to today. You can tap more than once.")
+
+    def _quick_log(hours_amount: float):
+        if run_db(
+            lambda: add_daily_study_hours(today, hours_amount, ""),
+            "Could not save hours",
+        ) is not None:
+            queue_garden_reward(award_hours_garden_xp(hours_amount))
+            total_after = get_study_hours_for_date(today)
+            flash(
+                f"Added {hours_amount:g}h — today is now **{total_after:g}h**.",
+                toast=f"+{hours_amount:g}h · {total_after:g}h total",
             )
-        hours = st.number_input(
-            "Hours studied", min_value=0.25, max_value=16.0, step=0.25, value=2.0
-        )
-        notes = st.text_input(
-            "Notes (optional)",
-            placeholder="e.g. Revision + practice questions",
-        )
-        if st.form_submit_button("Save Hours", type="primary", width="stretch"):
-            if run_db(
-                lambda: add_daily_study_hours(log_date, hours, notes),
-                "Could not log study hours",
-            ) is not None:
-                queue_garden_reward(award_hours_garden_xp(hours))
-                total_after = get_study_hours_for_date(log_date)
-                flash(
-                    f"Logged {hours}h for {log_date.strftime('%d %b %Y')} "
-                    f"(total now **{total_after:g}h**). Saved on this device.",
-                    toast=f"Saved · {total_after:g}h total",
-                )
-                st.rerun()
+            st.rerun()
+
+    q1, q2, q3, q4 = st.columns(4)
+    with q1:
+        if st.button("+ 30 min", key="qh_0_5", width="stretch"):
+            _quick_log(0.5)
+    with q2:
+        if st.button("+ 1 hour", key="qh_1", width="stretch", type="primary"):
+            _quick_log(1.0)
+    with q3:
+        if st.button("+ 2 hours", key="qh_2", width="stretch", type="primary"):
+            _quick_log(2.0)
+    with q4:
+        if st.button("+ 3 hours", key="qh_3", width="stretch"):
+            _quick_log(3.0)
+
+    with st.expander("Custom amount or other day", expanded=False):
+        with st.form("study_hours_form", clear_on_submit=True):
+            log_date = st.date_input("Date", today)
+            existing = get_study_hours_for_date(log_date)
+            if existing > 0:
+                st.caption(f"Already **{existing}h** on this day — new time will be added.")
+            hours = st.number_input(
+                "Hours studied", min_value=0.25, max_value=16.0, step=0.25, value=1.0
+            )
+            notes = st.text_input(
+                "Note (optional)",
+                placeholder="e.g. Revision",
+            )
+            if st.form_submit_button("Save hours", type="primary", width="stretch"):
+                if run_db(
+                    lambda: add_daily_study_hours(log_date, hours, notes),
+                    "Could not log study hours",
+                ) is not None:
+                    queue_garden_reward(award_hours_garden_xp(hours))
+                    total_after = get_study_hours_for_date(log_date)
+                    flash(
+                        f"Saved {hours}h for {log_date.strftime('%d %b %Y')} "
+                        f"(total **{total_after:g}h**).",
+                        toast=f"Saved · {total_after:g}h",
+                    )
+                    st.rerun()
 
     try:
         recent = get_recent_study_hours()
@@ -933,11 +948,11 @@ with tab_hours:
 
 with tab_logbook:
     st.markdown(
-        '<p class="section-label">Logbook</p>'
+        '<p class="section-label">Notes</p>'
         '<p class="section-title">What did you study?</p>',
         unsafe_allow_html=True,
     )
-    st.caption("One line is enough — saved on this device (use sidebar backup anytime).")
+    st.caption("One short line is enough. It saves when you tap Log it.")
 
     try:
         year_stats = get_activity_log_stats(CURRENT_YEAR)
@@ -971,15 +986,15 @@ with tab_logbook:
 
     quick_log = st.text_input(
         "Today's study",
-        placeholder="e.g. Read chapter 3 + 10 practice questions",
+        placeholder="e.g. Finished chapter 3",
         key="quick_log_text",
         label_visibility="collapsed",
     )
-    save_log = st.button("Log it", type="primary", width="stretch", key="quick_log_save")
+    save_log = st.button("✅ Log it", type="primary", width="stretch", key="quick_log_save")
 
     if save_log:
         if not quick_log.strip():
-            st.error("Write what you studied.")
+            st.error("Write a short line about what you studied.")
         elif run_db(
             lambda: add_activity_log(
                 today,
@@ -987,15 +1002,15 @@ with tab_logbook:
                 st.session_state.logbook_paper,
                 None,
             ),
-            "Could not save log entry",
+            "Could not save note",
         ) is not None:
             st.session_state.pop("quick_log_text", None)
-            flash("Logbook entry saved on this device.", toast="Logged!", toast_icon="📓")
+            flash("Note saved.", toast="Logged!", toast_icon="📓")
             st.rerun()
 
-    st.markdown("**Recent**")
+    st.markdown("**Recent notes**")
     if recent_entries.empty:
-        st.info(f"No entries yet — log what you studied today, {first_name}.")
+        st.info(f"Nothing here yet — add your first note above, {first_name}.")
     else:
         for _, row in recent_entries.iterrows():
             entry_id = int(row["id"])
@@ -1100,12 +1115,17 @@ with tab_logbook:
 
 with tab_garden:
     st.markdown(
-        '<p class="section-label">Study Garden</p>'
-        '<p class="section-title">Long prep path — foundation grove + exam sprint</p>',
+        '<p class="section-label">Garden</p>'
+        '<p class="section-title">Your study garden grows when you show up</p>',
         unsafe_allow_html=True,
     )
     life = garden_state.get("life") or {}
-    st.caption(life.get("hint", "Log hours daily — 4 complete days grow a new tree, 6 days bring fruit."))
+    st.caption(
+        life.get(
+            "hint",
+            "Log hours most days. New trees grow from consistency — swipe the map to explore.",
+        )
+    )
 
     week = life.get("week_days") or []
     if week:
@@ -1222,9 +1242,10 @@ with tab_garden:
 with tab_break:
     st.markdown(
         '<p class="section-label">Break</p>'
-        '<p class="section-title">Five minutes, then back to study</p>',
+        '<p class="section-title">A short rest — then back to study</p>',
         unsafe_allow_html=True,
     )
+    st.caption("Pick a game, tap to play. When you're ready, go back to Today or Hours.")
 
     category = st.segmented_control(
         "Category",

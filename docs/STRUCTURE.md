@@ -33,7 +33,15 @@ study-routine-tracker/
 Local SQLite: `study_routine_tracker.db` in the project root  
 (or `TRACKER_DATA_DIR` / Streamlit Cloud home). See `tracker/paths.py`.
 
+## Branches
+
+| Branch | Purpose |
+| --- | --- |
+| `main` | Default / laptop-friendly + shared features |
+| `tablet-android` | Easy tablet UI (plain language, quick hour buttons, no paywalls) |
+
+Laptop installers (`Start Tracker.bat`, `Install Autostart.bat`, scripts/) stay on all branches.
+
 ## Android tablet
 
-Open the Streamlit URL in Chrome (Cloud link or PC on LAN).  
-UI layouts and CSS target phones/tablets; see README “Android tablet”.
+Open the Streamlit URL in Chrome. Plain guide: [TABLET_GUIDE.md](TABLET_GUIDE.md).

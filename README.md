@@ -10,7 +10,21 @@ A simple **Streamlit** study tracker for competitive exams or any study goal.
 - Grow a Study Garden with XP  
 - Track consistency with a GitHub-style heatmap  
 
-**No account. Data stays on your PC.**
+**No account.** On a PC, data stays local. On a tablet, open the shared web link.
+
+---
+
+## Which version?
+
+| Who | Branch | How they use it |
+| --- | --- | --- |
+| **You (Windows laptop)** | `main` or this branch | Full install + `Start Tracker.bat` + optional autostart — unchanged |
+| **Someone on Android tablet** | **`tablet-android`** | Open a Streamlit link in Chrome — big buttons, plain language |
+
+**Tablet guide (send this to yourself when deploying):** [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md)
+
+> This branch (`tablet-android`) is the **easy tablet UI**.  
+> Laptop installers below stay in the repo and still work.
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/App-Streamlit-FF4B4B)](https://streamlit.io/)
@@ -58,27 +72,23 @@ streamlit run app.py
 
 Open **http://localhost:8501** — no signup. Progress saves automatically.
 
-### Android tablet (Chrome)
+### Android tablet (easy mode — this branch)
 
-This is a **web app**. On an Android tablet, open it in **Chrome** (or any modern browser) — no Play Store install.
+She does **not** install Python. You host the app; she only opens a link.
 
-**Easiest for someone else:** deploy to [Streamlit Community Cloud](https://share.streamlit.io/) (see below) and send them the `*.streamlit.app` link. They can **Add to Home screen** for an app-like icon.
+1. Deploy **branch `tablet-android`**, main file `app.py`, on [Streamlit Cloud](https://share.streamlit.io/)  
+2. Send her the `*.streamlit.app` link  
+3. She opens it in **Chrome** → optional: ⋮ → **Add to Home screen**
 
-**Same Wi‑Fi as your PC:** start the app so it listens on the network:
+Day-to-day for her: tabs **Today → Hours → Notes**. Full plain-English steps: [docs/TABLET_GUIDE.md](docs/TABLET_GUIDE.md).
+
+Same Wi‑Fi as your PC (optional):
 
 ```bash
 streamlit run app.py --server.address 0.0.0.0 --server.port 8501
 ```
 
-On the tablet, open `http://YOUR-PC-IP:8501` (find the PC IP in Windows with `ipconfig`).  
-Firewall may ask to allow Python — allow it on private networks.
-
-**Tablet tips**
-
-- Use the **☰** menu (top-left) for name, daily goal, and backup  
-- Swipe horizontally on the **Targets / Hours / Logbook / Garden / Break** tabs  
-- **Drag or swipe** the Study Garden map  
-- Break games work with tap (and on-screen controls)
+Then on the tablet: `http://YOUR-PC-IP:8501` (`ipconfig` on Windows).
 
 ### Windows shortcut
 
